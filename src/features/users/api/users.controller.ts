@@ -1,25 +1,16 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  HttpStatus,
-  NotFoundException,
-  Param,
-  Post,
-  Query,
-} from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, UseGuards } from '@nestjs/common'
 import { UsersQueryRepository } from '../infrastructure/users.query-repository'
-import { CreateUserInputModel, InputUserId } from './models/input/create-user.input.model'
+import { CreateUserInputModel } from './models/input/create-user-input.model'
 import { UserOutputModel } from './models/output/user.output.model'
 import { UsersService } from '../application/users.service'
-// import { BasicAuthGuard } from '../../../infrastructure/guards/auth.guard'
 import { QueryUserModel } from './models/input/query-user.input.model'
 import { PaginatedResponse } from '../../../common/models/common.model'
+import { ResultCode, throwExceptionByResultCode } from '../../../common/models/result-layer.model'
+import { BasicAuthGuard } from '../../../infrastructure/guards/auth.guard'
+import { MongoIdPipe } from '../../../infrastructure/pipes/mongo-id.pipe'
 
 @Controller('users')
-// @UseGuards(BasicAuthGuard)
+@UseGuards(BasicAuthGuard)
 export class UsersController {
   constructor(
     private readonly usersService: UsersService,
@@ -33,17 +24,23 @@ export class UsersController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  async create(@Body() userInputModel: CreateUserInputModel): Promise<UserOutputModel> {
-    return await this.usersService.create(userInputModel)
+  async create(@Body() userInputModel: CreateUserInputModel): Promise<UserOutputModel | void> {
+    const { resultCode, data, errorMessages } = await this.usersService.create(userInputModel)
+
+    if (resultCode === ResultCode.Success && data) {
+      return data
+    }
+
+    return throwExceptionByResultCode(resultCode, errorMessages)
   }
 
   @Delete(':userId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param() { userId }: InputUserId): Promise<void> {
-    const isDeleted = await this.usersService.deleteById(userId)
+  async delete(@Param('userId', MongoIdPipe) userId: string): Promise<void> {
+    const { resultCode, errorMessages } = await this.usersService.deleteById(userId)
 
-    if (!isDeleted) {
-      throw new NotFoundException()
+    if (resultCode !== ResultCode.Success) {
+      return throwExceptionByResultCode(resultCode, errorMessages)
     }
   }
 }

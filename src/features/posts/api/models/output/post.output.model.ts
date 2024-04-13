@@ -1,6 +1,6 @@
 import { PostDocument } from '../../../domain/post.entity'
-import { LikesCount } from '../../../../likes/domain/like.entity'
-import { ExtendedLikesInfoOutputModel } from '../../../../likes/models/output/like.output.model'
+import { LikesCount, LikeStatus } from '../../../../likes/domain/like.entity'
+import { ExtendedLikesInfoOutputModel, NewestLikeOutputModel } from '../../../../likes/models/output/like.output.model'
 
 export class PostOutputModel {
   constructor(
@@ -13,6 +13,16 @@ export class PostOutputModel {
     public extendedLikesInfo: LikesCount | ExtendedLikesInfoOutputModel,
     public createdAt: string,
   ) {}
+
+  static extendLikesInfo(post: PostOutputModel, myStatus: LikeStatus, newestLikes: Nullable<NewestLikeOutputModel[]>) {
+    post.extendedLikesInfo = {
+      likesCount: post.extendedLikesInfo.likesCount,
+      dislikesCount: post.extendedLikesInfo.dislikesCount,
+      newestLikes,
+      myStatus,
+    }
+    return post
+  }
 }
 
 // MAPPERS

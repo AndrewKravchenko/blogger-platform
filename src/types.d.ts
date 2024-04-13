@@ -1,4 +1,6 @@
 declare global {
+  type Nullable<T> = T | null
+
   namespace NodeJS {
     interface ProcessEnv {
       PORT: string
@@ -12,8 +14,8 @@ declare global {
   }
 
   namespace Express {
-    interface Request {
-      userId?: string
+    interface User {
+      id?: string
     }
   }
 }

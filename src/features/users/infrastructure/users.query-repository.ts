@@ -2,7 +2,14 @@ import { Injectable } from '@nestjs/common'
 import { User } from '../domain/user.entity'
 import { FilterQuery, Model } from 'mongoose'
 import { InjectModel } from '@nestjs/mongoose'
-import { UserOutputMapper, UserOutputModel } from '../api/models/output/user.output.model'
+import {
+  FullUserOutputMapper,
+  FullUserOutputModel,
+  MeOutputMapper,
+  MeOutputModel,
+  UserOutputMapper,
+  UserOutputModel,
+} from '../api/models/output/user.output.model'
 import { QueryUserModel } from '../api/models/input/query-user.input.model'
 import { paginationSkip } from '../../../utils/queryParams'
 import { PaginatedResponse } from '../../../common/models/common.model'
@@ -10,6 +17,31 @@ import { PaginatedResponse } from '../../../common/models/common.model'
 @Injectable()
 export class UsersQueryRepository {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+
+  async getMe(userId: string): Promise<Nullable<MeOutputModel>> {
+    const user = await this.userModel.findById(userId)
+
+    if (!user) {
+      return null
+    }
+
+    return MeOutputMapper(user)
+  }
+
+  async getUserByLoginOrEmail(loginOrEmail: string, email?: string): Promise<Nullable<FullUserOutputModel>> {
+    const user = await this.userModel.findOne({
+      $or: [
+        { login: { $regex: loginOrEmail, $options: 'i' } },
+        { email: { $regex: email || loginOrEmail, $options: 'i' } },
+      ],
+    })
+
+    if (!user) {
+      return null
+    }
+
+    return FullUserOutputMapper(user)
+  }
 
   public async getUsers({
     sortBy,
@@ -48,7 +80,7 @@ export class UsersQueryRepository {
     }
   }
 
-  public async getUserById(userId: string): Promise<UserOutputModel | null> {
+  public async getUserById(userId: string): Promise<Nullable<UserOutputModel>> {
     const user = await this.userModel.findById(userId)
 
     if (!user) {

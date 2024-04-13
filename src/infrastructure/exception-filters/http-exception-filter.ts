@@ -26,11 +26,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
       response.status(status).json(errorsResponse)
     } else {
-      response.status(status).json({
-        statusCode: status,
-        timestamp: getCurrentDateISOString(),
-        path: request.url,
-      })
+      response.sendStatus(status)
+      // response.status(status).json({
+      //   statusCode: status,
+      //   timestamp: getCurrentDateISOString(),
+      //   path: request.url,
+      // })
     }
   }
 }

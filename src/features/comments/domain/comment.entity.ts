@@ -39,7 +39,13 @@ export class Comment {
   commentatorInfo: CommentatorInfo
 
   @Prop({ required: true, default: getCurrentDateISOString })
-  createdAt: string
+  createdAt?: string
+
+  constructor({ postId, content, commentatorInfo }: Comment) {
+    this.postId = postId
+    this.content = content
+    this.commentatorInfo = commentatorInfo
+  }
 }
 
 export const CommentSchema = SchemaFactory.createForClass(Comment)

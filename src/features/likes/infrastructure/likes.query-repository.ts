@@ -7,7 +7,18 @@ import { PostLikeOutputMapper, PostLikeOutputModel } from '../models/output/like
 @Injectable()
 export class LikesQueryRepository {
   constructor(@InjectModel(Like.name) private likeModel: Model<Like>) {}
-  public async getUserPostLikeStatus(postId: string, userId?: string): Promise<LikeStatus | null> {
+
+  async getPostLikeStatus(postId: string, userId: string): Promise<LikeStatus | null> {
+    const likeStatus = await this.likeModel.findOne({ postId, userId })
+
+    if (!likeStatus) {
+      return null
+    }
+
+    return likeStatus.myStatus
+  }
+
+  async getUserPostLikeStatus(postId: string, userId?: string): Promise<LikeStatus | null> {
     if (!userId) {
       return null
     }
@@ -21,7 +32,7 @@ export class LikesQueryRepository {
     return like.myStatus
   }
 
-  public async getCommentLikeStatus(commentId: string, userId?: string): Promise<LikeStatus | null> {
+  async getCommentLikeStatus(commentId: string, userId?: string): Promise<LikeStatus | null> {
     if (!userId) {
       return null
     }
@@ -35,7 +46,7 @@ export class LikesQueryRepository {
     return like.myStatus
   }
 
-  public async getPostNewestLikes(postId: string): Promise<PostLikeOutputModel[] | null> {
+  async getPostNewestLikes(postId: string): Promise<PostLikeOutputModel[] | null> {
     const newestLikes = await this.likeModel
       .find({ postId, myStatus: LikeStatus.Like })
       .sort({ createdAt: -1 })

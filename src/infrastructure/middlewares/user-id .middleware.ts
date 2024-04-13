@@ -10,7 +10,7 @@ export class DecodeUserIdMiddleware implements NestMiddleware {
     const userId = this.authService.decodeUserIdFromToken(req)
 
     if (userId) {
-      req.userId = userId
+      req.user = { ...req.user, id: userId }
     }
 
     next()

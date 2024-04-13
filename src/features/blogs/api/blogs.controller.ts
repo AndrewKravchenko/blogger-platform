@@ -11,6 +11,7 @@ import {
   Put,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common'
 import { BlogsQueryRepository } from '../infrastructure/blogs.query-repository'
 import { CreateBlogInputModel, CreatePostToBlogInputModel } from './models/input/create-blog.input.model'
@@ -22,7 +23,9 @@ import { Request } from 'express'
 import { PostOutputModel } from '../../posts/api/models/output/post.output.model'
 import { PaginatedResponse } from '../../../common/models/common.model'
 import { UpdateBlogInputModel } from './models/input/update-blog.input.model'
-import { InputBlogIdModel } from './models/input/blog.input.model'
+import { ResultCode, throwExceptionByResultCode } from '../../../common/models/result-layer.model'
+import { MongoIdPipe } from '../../../infrastructure/pipes/mongo-id.pipe'
+import { BasicAuthGuard } from '../../../infrastructure/guards/auth.guard'
 
 @Controller('blogs')
 export class BlogsController {
@@ -37,7 +40,7 @@ export class BlogsController {
   }
 
   @Get(':blogId')
-  async getBlogById(@Param() { blogId }: InputBlogIdModel): Promise<BlogOutputModel | void> {
+  async getBlogById(@Param('blogId', MongoIdPipe) blogId: string): Promise<BlogOutputModel | void> {
     const blog = await this.blogsQueryRepository.getBlogById(blogId)
 
     if (!blog) {
@@ -51,56 +54,67 @@ export class BlogsController {
   async getPostsByBlogId(
     @Req() req: Request,
     @Query() query: QueryPostModel,
-    @Param() { blogId }: InputBlogIdModel,
+    @Param('blogId', MongoIdPipe) blogId: string,
   ): Promise<PaginatedResponse<PostOutputModel> | void> {
-    const posts = await this.blogsService.getPostsByBlogId(query, blogId, req.userId)
+    const { resultCode, data, errorMessages } = await this.blogsService.getPostsByBlogId(query, blogId, req.user?.id)
 
-    if (!posts) {
-      throw new NotFoundException()
+    if (resultCode === ResultCode.Success && data) {
+      return data
     }
 
-    return posts
+    return throwExceptionByResultCode(resultCode, errorMessages)
   }
 
+  @UseGuards(BasicAuthGuard)
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() createModel: CreateBlogInputModel): Promise<BlogOutputModel> {
     return await this.blogsService.createBlog(createModel)
   }
 
+  @UseGuards(BasicAuthGuard)
   @Post(':blogId/posts')
   @HttpCode(HttpStatus.CREATED)
   async createPostToBlog(
     @Req() req: Request,
-    @Param() { blogId }: InputBlogIdModel,
+    @Param('blogId', MongoIdPipe) blogId: string,
     @Body() postCreateModel: CreatePostToBlogInputModel,
   ): Promise<PostOutputModel | void> {
-    const createdPost = await this.blogsService.createPostToBlog(blogId, postCreateModel, req.userId)
+    const { resultCode, data, errorMessages } = await this.blogsService.createPostToBlog(
+      blogId,
+      postCreateModel,
+      req.user?.id,
+    )
 
-    if (!createdPost) {
-      throw new NotFoundException()
+    if (resultCode === ResultCode.Success && data) {
+      return data
     }
 
-    return createdPost
+    return throwExceptionByResultCode(resultCode, errorMessages)
   }
 
+  @UseGuards(BasicAuthGuard)
   @Put(':blogId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async updateBlog(@Param() { blogId }: InputBlogIdModel, @Body() updateModel: UpdateBlogInputModel): Promise<void> {
-    const isUpdated = await this.blogsService.updateBlog(blogId, updateModel)
+  async updateBlog(
+    @Param('blogId', MongoIdPipe) blogId: string,
+    @Body() updateModel: UpdateBlogInputModel,
+  ): Promise<void> {
+    const { resultCode, errorMessages } = await this.blogsService.updateBlog(blogId, updateModel)
 
-    if (!isUpdated) {
-      throw new NotFoundException()
+    if (resultCode !== ResultCode.Success) {
+      return throwExceptionByResultCode(resultCode, errorMessages)
     }
   }
 
+  @UseGuards(BasicAuthGuard)
   @Delete(':blogId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param() { blogId }: InputBlogIdModel): Promise<void> {
-    const isDeleted = await this.blogsService.deleteBlogById(blogId)
+  async delete(@Param('blogId', MongoIdPipe) blogId: string): Promise<void> {
+    const { resultCode, errorMessages } = await this.blogsService.deleteBlogById(blogId)
 
-    if (!isDeleted) {
-      throw new NotFoundException()
+    if (resultCode !== ResultCode.Success) {
+      return throwExceptionByResultCode(resultCode, errorMessages)
     }
   }
 }

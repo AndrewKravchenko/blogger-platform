@@ -38,7 +38,7 @@ export class BearerAuthGuard implements CanActivate {
     const userId = this.authService.decodeUserIdFromToken(req)
 
     if (userId) {
-      req.userId = userId
+      req.user = { id: userId }
       return true
     }
 

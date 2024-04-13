@@ -5,21 +5,25 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Param,
   Post,
   Put,
   Query,
   Req,
+  UseGuards,
 } from '@nestjs/common'
-import { CreatePostInputModel } from './models/input/create-post.input.model'
+import { CreateCommentInputModel, CreatePostInputModel } from './models/input/create-post.input.model'
 import { PostOutputModel } from './models/output/post.output.model'
 import { PostsService } from '../application/posts.service'
 import { Request } from 'express'
 import { QueryPostModel } from './models/input/query-post.input.model'
 import { PaginatedResponse } from '../../../common/models/common.model'
-import { InputPostId } from './models/input/post.input.model'
-import { UpdatePostInputModel } from './models/input/update-post.input.model'
+import { UpdatePostInputModel, UpdatePostLikeStatusInputModel } from './models/input/update-post.input.model'
+import { BasicAuthGuard, BearerAuthGuard } from '../../../infrastructure/guards/auth.guard'
+import { CurrentUserId } from '../../auth/decorators/current-user-id.param.decorator'
+import { ResultCode, throwExceptionByResultCode } from '../../../common/models/result-layer.model'
+import { CommentOutputModel } from '../../comments/api/models/output/comment.output.model'
+import { MongoIdPipe } from '../../../infrastructure/pipes/mongo-id.pipe'
 
 @Controller('posts')
 export class PostsController {
@@ -27,52 +31,86 @@ export class PostsController {
 
   @Get()
   async getPosts(@Req() req: Request, @Query() query: QueryPostModel): Promise<PaginatedResponse<PostOutputModel>> {
-    return await this.postsService.getPosts(query, req.userId)
+    return await this.postsService.getPosts(query, req.user?.id)
   }
 
   @Get(':postId')
-  async getPostById(@Req() req: Request, @Param() { postId }: InputPostId): Promise<PostOutputModel | void> {
-    const post = await this.postsService.getPostById(postId, req.userId)
+  async getPostById(
+    @Req() req: Request,
+    @Param('postId', MongoIdPipe) postId: string,
+  ): Promise<PostOutputModel | void> {
+    const { resultCode, data, errorMessages } = await this.postsService.getPostById(postId, req.user?.id)
 
-    if (!post) {
-      throw new NotFoundException()
+    if (resultCode === ResultCode.Success && data) {
+      return data
     }
 
-    return post
+    return throwExceptionByResultCode(resultCode, errorMessages)
   }
 
+  @UseGuards(BasicAuthGuard)
   @Post()
-  @HttpCode(HttpStatus.CREATED)
-  async create(@Req() req: Request, @Body() createModel: CreatePostInputModel): Promise<PostOutputModel | void> {
-    const createdPost = await this.postsService.createPost(createModel)
+  async create(@Body() createModel: CreatePostInputModel): Promise<PostOutputModel | void> {
+    const { resultCode, data, errorMessages } = await this.postsService.createPost(createModel)
 
-    if (!createdPost) {
-      throw new NotFoundException()
+    if (resultCode === ResultCode.Success && data) {
+      return data
     }
 
-    return createdPost
+    return throwExceptionByResultCode(resultCode, errorMessages)
   }
 
+  @UseGuards(BearerAuthGuard)
+  @Post(':postId/comments')
+  async createCommentToPost(
+    @CurrentUserId() currentUserId: string,
+    @Param('postId', MongoIdPipe) postId: string,
+    @Body() { content }: CreateCommentInputModel,
+  ): Promise<CommentOutputModel | void> {
+    const { resultCode, data } = await this.postsService.createCommentToPost(postId, currentUserId, content)
+
+    if (resultCode === ResultCode.Success && data) {
+      return data
+    }
+
+    return throwExceptionByResultCode(resultCode)
+  }
+
+  @UseGuards(BasicAuthGuard)
   @Put(':postId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async updateBlog(
-    @Param() { postId }: InputPostId,
+  async updatePost(
+    @Param('postId', MongoIdPipe) postId: string,
     @Body() updateModel: UpdatePostInputModel,
   ): Promise<PostOutputModel | void> {
-    const isUpdated = await this.postsService.updatePost(postId, updateModel)
+    const { resultCode, errorMessages } = await this.postsService.updatePost(postId, updateModel)
 
-    if (!isUpdated) {
-      throw new NotFoundException()
+    if (resultCode !== ResultCode.Success) {
+      return throwExceptionByResultCode(resultCode, errorMessages)
     }
   }
 
+  @UseGuards(BearerAuthGuard)
+  @Put(':postId/like-status')
+  async updateLikeStatus(
+    @Param('postId', MongoIdPipe) postId: string,
+    @CurrentUserId() currentUserId: string,
+    @Body() { likeStatus }: UpdatePostLikeStatusInputModel,
+  ): Promise<PostOutputModel | void> {
+    const { resultCode, errorMessages } = await this.postsService.updateLikeStatus(currentUserId, postId, likeStatus)
+
+    if (resultCode !== ResultCode.Success) {
+      return throwExceptionByResultCode(resultCode, errorMessages)
+    }
+  }
+
+  @UseGuards(BasicAuthGuard)
   @Delete(':postId')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param() { postId }: InputPostId): Promise<void> {
-    const isDeleted = await this.postsService.deletePostById(postId)
+  async delete(@Param('postId', MongoIdPipe) postId: string): Promise<void> {
+    const { resultCode, errorMessages } = await this.postsService.deletePostById(postId)
 
-    if (!isDeleted) {
-      throw new NotFoundException()
+    if (resultCode !== ResultCode.Success) {
+      return throwExceptionByResultCode(resultCode, errorMessages)
     }
   }
 }

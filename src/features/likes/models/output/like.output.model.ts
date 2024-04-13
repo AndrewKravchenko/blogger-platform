@@ -31,19 +31,11 @@ export class NewestLikeOutputModel {
   }
 }
 
-export class LikesInfoOutputModel {
-  constructor(
-    public likesCount: number,
-    public dislikesCount: number,
-    public myStatus: LikeStatus,
-  ) {}
-}
-
 export class ExtendedLikesInfoOutputModel {
   constructor(
     public likesCount: number,
     public dislikesCount: number,
-    public myStatus: LikeStatus,
+    public myStatus: LikeStatus | null,
     public newestLikes: NewestLikeOutputModel[] | null,
   ) {}
 }

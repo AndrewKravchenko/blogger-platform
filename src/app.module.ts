@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule, Provider } from '@nestjs/common'
+import { MiddlewareConsumer, Module, NestModule, Provider, RequestMethod } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { appSettings } from './settings/app-settings'
 import { UsersRepository } from './features/users/infrastructure/users.repository'
@@ -14,7 +14,6 @@ import { BlogsService } from './features/blogs/application/blogs.service'
 import { BlogsQueryRepository } from './features/blogs/infrastructure/blogs.query-repository'
 import { Blog, BlogSchema } from './features/blogs/domain/blog.entity'
 import { PostsController } from './features/posts/api/posts.controller'
-import { DecodeUserIdMiddleware } from './infrastructure/middlewares/jwt .middleware'
 import { Post, PostSchema } from './features/posts/domain/post.entity'
 import { LikesQueryRepository } from './features/likes/infrastructure/likes.query-repository'
 import { LikesService } from './features/likes/application/likes.service'
@@ -29,13 +28,35 @@ import { CommentsQueryRepository } from './features/comments/infrastructure/comm
 import { CommentsService } from './features/comments/application/comments.service'
 import { TestingService } from './features/testing/application/testing.service'
 import { TestingController } from './features/testing/testing.controller'
+import { AuthController } from './features/auth/api/auth.controller'
+import { LocalStrategy } from './features/auth/strategies/local.strategy'
+import { JwtService } from '@nestjs/jwt'
+import { SessionsRepository } from './features/sessions/infrastructure/sessions.repository'
+import { SessionsQueryRepository } from './features/sessions/infrastructure/sessions.query-repository'
+import { SessionsService } from './features/sessions/application/sessions.service'
+import { SessionsController } from './features/sessions/api/sessions.controller'
+import { Session, SessionSchema } from './features/sessions/domain/session.entity'
+import { RateLimiterMiddleware } from './infrastructure/middlewares/rate-limiter-middleware'
+import { RequestLog, RequestLogSchema } from './features/requests/domain/request-log.entity'
+import { RequestLogsRepository } from './features/requests/infrastructure/request-logs.repository'
+import { JwtStrategy } from './features/auth/strategies/jwt.strategy'
+import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter'
+import { MailerModule } from '@nestjs-modules/mailer'
+import { EmailsService } from './features/emails/application/emails.service'
+import { JwtCookieStrategy } from './features/auth/strategies/jwt-cookie.strategy'
+import { CommentsRepository } from './features/comments/infrastructure/comments.repository'
+import { LikesRepository } from './features/likes/infrastructure/likes.repository'
+import { DecodeUserIdMiddleware } from './infrastructure/middlewares/user-id .middleware'
 
 const usersProviders: Provider[] = [UsersRepository, UsersService, UsersQueryRepository]
-const authProviders: Provider[] = [AuthService]
+const authProviders: Provider[] = [AuthService, LocalStrategy, JwtStrategy, JwtCookieStrategy, JwtService]
 const postsProviders: Provider[] = [PostsRepository, PostsQueryRepository, PostsService]
 const blogsProviders: Provider[] = [BlogsQueryRepository, BlogsRepository, BlogsService]
-const likesProviders: Provider[] = [LikesQueryRepository, LikesService]
-const commentsProviders: Provider[] = [CommentsQueryRepository, CommentsService]
+const likesProviders: Provider[] = [LikesQueryRepository, LikesRepository, LikesService]
+const sessionsProviders: Provider[] = [SessionsRepository, SessionsQueryRepository, SessionsService]
+const commentsProviders: Provider[] = [CommentsQueryRepository, CommentsRepository, CommentsService]
+const requestLogsProviders: Provider[] = [RequestLogsRepository]
+const emailsProviders: Provider[] = [EmailsService]
 const testingProviders: Provider[] = [TestingService]
 
 @Module({
@@ -51,7 +72,32 @@ const testingProviders: Provider[] = [TestingService]
       { name: Post.name, schema: PostSchema },
       { name: Like.name, schema: LikeSchema },
       { name: Comment.name, schema: CommentSchema },
+      { name: Session.name, schema: SessionSchema },
+      { name: RequestLog.name, schema: RequestLogSchema },
     ]),
+    MailerModule.forRoot({
+      transport: {
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        ignoreTLS: true,
+        secure: true,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD,
+        },
+      },
+      defaults: {
+        from: `"Andrew" <${process.env.EMAIL_USER}>`,
+      },
+      template: {
+        dir: process.cwd() + '/src/features/emails/templates',
+        adapter: new EjsAdapter(),
+        options: {
+          strict: true,
+        },
+      },
+    }),
   ],
   providers: [
     ...usersProviders,
@@ -60,12 +106,29 @@ const testingProviders: Provider[] = [TestingService]
     ...postsProviders,
     ...likesProviders,
     ...commentsProviders,
+    ...sessionsProviders,
+    ...requestLogsProviders,
+    ...emailsProviders,
     ...testingProviders,
   ],
-  controllers: [UsersController, BlogsController, PostsController, CommentsController, TestingController],
+  controllers: [
+    AuthController,
+    UsersController,
+    BlogsController,
+    PostsController,
+    CommentsController,
+    SessionsController,
+    TestingController,
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggerMiddleware).forRoutes('*').apply(DecodeUserIdMiddleware).forRoutes('*')
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes('*')
+      .apply(DecodeUserIdMiddleware)
+      .forRoutes('*')
+      .apply(RateLimiterMiddleware)
+      .forRoutes({ path: 'auth/login', method: RequestMethod.POST })
   }
 }

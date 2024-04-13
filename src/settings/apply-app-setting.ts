@@ -25,7 +25,7 @@ const setAppPipes = (app: INestApplication) => {
       whitelist: true,
       stopAtFirstError: true,
       exceptionFactory: (errors) => {
-        const customErrors: { key: string; message?: string }[] = []
+        const customErrors: { field: string; message?: string }[] = []
 
         errors.forEach((e) => {
           const constraintKeys = Object.keys(e.constraints || {})
@@ -33,7 +33,7 @@ const setAppPipes = (app: INestApplication) => {
           constraintKeys.forEach((cKey) => {
             const message = e.constraints?.[cKey]
 
-            customErrors.push({ key: e.property, message })
+            customErrors.push({ field: e.property, message })
           })
         })
 

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument } from 'mongoose'
-import { CreateUserModel } from '../api/models/input/create-user.input.model'
+import { CreateUserModel } from '../api/models/input/create-user-input.model'
 import { getCurrentDateISOString } from '../../../utils/common'
 
 export type UserDocument = HydratedDocument<User>
@@ -17,6 +17,11 @@ export const EmailConfirmationSchema = SchemaFactory.createForClass(EmailConfirm
 export class PasswordRecovery {
   @Prop({ required: true }) code: string
   @Prop({ required: true }) expirationDate: Date
+
+  constructor(code: string, expirationDate: Date) {
+    this.code = code
+    this.expirationDate = expirationDate
+  }
 }
 
 export const PasswordRecoverySchema = SchemaFactory.createForClass(PasswordRecovery)
@@ -42,10 +47,10 @@ export class User {
   createdAt: string
 
   @Prop({ _id: false, type: EmailConfirmationSchema })
-  emailConfirmation: EmailConfirmation
+  emailConfirmation?: EmailConfirmation
 
   @Prop({ _id: false, type: PasswordRecoverySchema })
-  passwordRecovery: PasswordRecovery
+  passwordRecovery?: PasswordRecovery
 
   constructor(userData: CreateUserModel) {
     this.login = userData.login
@@ -53,8 +58,8 @@ export class User {
     this.password = userData.password
     this.passwordSalt = userData.passwordSalt
     this.isDeleted = userData.isDeleted
-    // this.emailConfirmation = userData.emailConfirmation
-    // this.passwordRecovery = userData.passwordRecovery
+    this.emailConfirmation = userData.emailConfirmation
+    this.passwordRecovery = userData.passwordRecovery
   }
 }
 

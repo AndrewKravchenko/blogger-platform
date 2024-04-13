@@ -6,7 +6,6 @@ import { BlogOutputMapper, BlogOutputModel } from '../api/models/output/blog.out
 import { QueryBlogInputModel } from '../api/models/input/query-blog.input.model'
 import { paginationSkip } from '../../../utils/queryParams'
 import { PaginatedResponse } from '../../../common/models/common.model'
-import { ObjectId } from 'mongodb'
 
 @Injectable()
 export class BlogsQueryRepository {

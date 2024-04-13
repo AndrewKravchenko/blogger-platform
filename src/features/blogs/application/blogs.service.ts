@@ -10,6 +10,7 @@ import { PostOutputModel } from '../../posts/api/models/output/post.output.model
 import { PostsService } from '../../posts/application/posts.service'
 import { CreatePostInputModel } from '../../posts/api/models/input/create-post.input.model'
 import { UpdateBlogInputModel } from '../api/models/input/update-blog.input.model'
+import { Result, ResultCode } from '../../../common/models/result-layer.model'
 
 @Injectable()
 export class BlogsService {
@@ -24,20 +25,20 @@ export class BlogsService {
     postQuery: QueryPostModel,
     blogId: string,
     userId?: string,
-  ): Promise<PaginatedResponse<PostOutputModel> | null> {
+  ): Promise<Result<PaginatedResponse<PostOutputModel>>> {
     const blog = await this.blogsQueryRepository.getBlogById(blogId)
 
     if (!blog) {
-      return null
+      return { resultCode: ResultCode.NotFound }
     }
 
     const paginatedPosts = await this.postsQueryRepository.getPostsByBlogId(blogId, postQuery)
 
     for (const post of paginatedPosts.items) {
-      await this.postsService.setPostExtendedLikesInfo(post, userId)
+      await this.postsService.extendPostLikesInfo(post, userId)
     }
 
-    return paginatedPosts
+    return { resultCode: ResultCode.Success, data: paginatedPosts }
   }
 
   async createBlog(blog: CreateBlogInputModel): Promise<BlogOutputModel> {
@@ -48,16 +49,18 @@ export class BlogsService {
     blogId: string,
     createPostModel: CreatePostToBlogInputModel,
     userId?: string,
-  ): Promise<PostOutputModel | null> {
+  ): Promise<Result<PostOutputModel>> {
     const newPost: CreatePostInputModel = { ...createPostModel, blogId }
     return await this.postsService.createPost(newPost, userId)
   }
 
-  async updateBlog(blogId: string, updatedBlog: UpdateBlogInputModel): Promise<boolean> {
-    return await this.blogsRepository.updateBlog(blogId, updatedBlog)
+  async updateBlog(blogId: string, updatedBlog: UpdateBlogInputModel): Promise<Result> {
+    const isUpdated = await this.blogsRepository.updateBlog(blogId, updatedBlog)
+    return { resultCode: isUpdated ? ResultCode.Success : ResultCode.NotFound }
   }
 
-  async deleteBlogById(blogId: string): Promise<boolean> {
-    return await this.blogsRepository.deleteBlogById(blogId)
+  async deleteBlogById(blogId: string): Promise<Result> {
+    const isDeleted = await this.blogsRepository.deleteBlogById(blogId)
+    return { resultCode: isDeleted ? ResultCode.Success : ResultCode.NotFound }
   }
 }

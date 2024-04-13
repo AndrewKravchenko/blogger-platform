@@ -17,8 +17,3 @@ export class BaseBlogInputModel {
   @Matches(/^https:\/\/([a-zA-Z0-9_-]+\.)+[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*\/?$/)
   websiteUrl: string
 }
-
-export class InputBlogIdModel {
-  @IsMongoId()
-  blogId: string
-}

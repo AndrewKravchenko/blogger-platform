@@ -1,6 +1,6 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common'
 import { Request, Response } from 'express'
-import { getCurrentDateISOString } from '../../utils/common'
+import { getCurrentDateISOString } from '../utils/common'
 
 // https://docs.nestjs.com/exception-filters
 @Catch(HttpException)

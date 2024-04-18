@@ -2,7 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument } from 'mongoose'
 import { CreatePostModel } from '../api/models/input/create-post.input.model'
 import { LikesCount, LikesCountSchema } from '../../likes/domain/like.entity'
-import { getCurrentDateISOString } from '../../../utils/common'
+import { getCurrentDateISOString } from '../../../infrastructure/utils/common'
 
 export type PostDocument = HydratedDocument<Post>
 

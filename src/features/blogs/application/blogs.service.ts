@@ -10,7 +10,7 @@ import { PostOutputModel } from '../../posts/api/models/output/post.output.model
 import { PostsService } from '../../posts/application/posts.service'
 import { CreatePostInputModel } from '../../posts/api/models/input/create-post.input.model'
 import { UpdateBlogInputModel } from '../api/models/input/update-blog.input.model'
-import { Result, ResultCode } from '../../../common/models/result-layer.model'
+import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
 
 @Injectable()
 export class BlogsService {
@@ -25,11 +25,11 @@ export class BlogsService {
     postQuery: QueryPostModel,
     blogId: string,
     userId?: string,
-  ): Promise<Result<PaginatedResponse<PostOutputModel>>> {
+  ): Promise<InterlayerResult<Nullable<PaginatedResponse<PostOutputModel>>>> {
     const blog = await this.blogsQueryRepository.getBlogById(blogId)
 
     if (!blog) {
-      return { resultCode: ResultCode.NotFound }
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
     const paginatedPosts = await this.postsQueryRepository.getPostsByBlogId(blogId, postQuery)
@@ -38,29 +38,39 @@ export class BlogsService {
       await this.postsService.extendPostLikesInfo(post, userId)
     }
 
-    return { resultCode: ResultCode.Success, data: paginatedPosts }
+    return InterlayerResult.Ok(paginatedPosts)
   }
 
-  async createBlog(blog: CreateBlogInputModel): Promise<BlogOutputModel> {
-    return await this.blogsRepository.create(blog)
+  async createBlog(body: CreateBlogInputModel): Promise<BlogOutputModel> {
+    return await this.blogsRepository.create(body)
   }
 
   async createPostToBlog(
     blogId: string,
     createPostModel: CreatePostToBlogInputModel,
     userId?: string,
-  ): Promise<Result<PostOutputModel>> {
+  ): Promise<InterlayerResult<Nullable<PostOutputModel>>> {
     const newPost: CreatePostInputModel = { ...createPostModel, blogId }
     return await this.postsService.createPost(newPost, userId)
   }
 
-  async updateBlog(blogId: string, updatedBlog: UpdateBlogInputModel): Promise<Result> {
+  async updateBlog(blogId: string, updatedBlog: UpdateBlogInputModel): Promise<InterlayerResult> {
     const isUpdated = await this.blogsRepository.updateBlog(blogId, updatedBlog)
-    return { resultCode: isUpdated ? ResultCode.Success : ResultCode.NotFound }
+
+    if (isUpdated) {
+      return InterlayerResult.Ok()
+    } else {
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
+    }
   }
 
-  async deleteBlogById(blogId: string): Promise<Result> {
+  async deleteBlogById(blogId: string): Promise<InterlayerResult> {
     const isDeleted = await this.blogsRepository.deleteBlogById(blogId)
-    return { resultCode: isDeleted ? ResultCode.Success : ResultCode.NotFound }
+
+    if (isDeleted) {
+      return InterlayerResult.Ok()
+    } else {
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
+    }
   }
 }

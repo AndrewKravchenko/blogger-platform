@@ -11,7 +11,7 @@ import {
   UserOutputModel,
 } from '../api/models/output/user.output.model'
 import { QueryUserModel } from '../api/models/input/query-user.input.model'
-import { paginationSkip } from '../../../utils/queryParams'
+import { paginationSkip } from '../../../infrastructure/utils/queryParams'
 import { PaginatedResponse } from '../../../common/models/common.model'
 
 @Injectable()

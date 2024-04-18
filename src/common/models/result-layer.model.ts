@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common'
 
-export enum ResultCode {
+export enum InterlayerResultCode {
   Success,
   BadRequest,
   Unauthorized,
@@ -14,35 +14,73 @@ export enum ResultCode {
   Forbidden,
 }
 
-export type FieldError = {
-  message: string
-  field: string
-}
+export class InterlayerResult<D = null> {
+  data: D | null = null
+  code = InterlayerResultCode.Success
+  errorMessages: InterlayerErrorMessage[]
 
-export class Result<T = null> {
-  resultCode: ResultCode
-  errorMessages?: FieldError[]
-  data?: T
-
-  constructor(resultCode: ResultCode, errorMessages?: FieldError[], data?: T) {
-    this.resultCode = resultCode
-    this.errorMessages = errorMessages
+  constructor(
+    data: D | null = null,
+    code = InterlayerResultCode.Success,
+    errorMessages: InterlayerErrorMessage[] = [],
+  ) {
     this.data = data
+    this.code = code
+    this.errorMessages = errorMessages
+  }
+
+  static Ok<D>(data?: D): InterlayerResult<D> {
+    return new InterlayerResult<D>(data)
+  }
+
+  static Error(code: InterlayerResultCode, field?: string, message?: string): InterlayerResult {
+    let errorMessages: InterlayerErrorMessage[] = []
+
+    if (field && message) {
+      errorMessages = [new InterlayerErrorMessage(message, field)]
+    }
+
+    return new InterlayerResult(null, code, errorMessages)
+  }
+
+  hasError(): boolean {
+    return this.code !== InterlayerResultCode.Success
   }
 }
 
-export const throwExceptionByResultCode = (resultCode: ResultCode, errorMessages?: FieldError[]): void => {
+export class InterlayerErrorMessage {
+  public readonly message: string
+  public readonly field: string
+
+  constructor(message: string, field: string) {
+    this.message = message
+    this.field = field
+  }
+}
+
+export const handleInterlayerResult = <D>(result: InterlayerResult<D>) => {
+  if (result.hasError()) {
+    return throwExceptionByInterlayerResultCode(result.code, result.errorMessages)
+  }
+
+  return result.data || undefined
+}
+
+export const throwExceptionByInterlayerResultCode = (
+  resultCode: InterlayerResultCode,
+  errorMessages?: InterlayerErrorMessage[],
+): void => {
   switch (resultCode) {
-    case ResultCode.NotFound:
+    case InterlayerResultCode.NotFound:
       throw new NotFoundException(errorMessages)
 
-    case ResultCode.Unauthorized:
+    case InterlayerResultCode.Unauthorized:
       throw new UnauthorizedException(errorMessages)
 
-    case ResultCode.Forbidden:
+    case InterlayerResultCode.Forbidden:
       throw new ForbiddenException(errorMessages)
 
-    case ResultCode.BadRequest:
+    case InterlayerResultCode.BadRequest:
       throw new BadRequestException(errorMessages)
 
     default:

@@ -12,7 +12,7 @@ import { QueryPostModel } from '../api/models/input/query-post.input.model'
 import { PaginatedResponse } from '../../../common/models/common.model'
 import { UpdatePostInputModel } from '../api/models/input/update-post.input.model'
 import { UsersQueryRepository } from '../../users/infrastructure/users.query-repository'
-import { Result, ResultCode } from '../../../common/models/result-layer.model'
+import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
 import { Comment } from '../../comments/domain/comment.entity'
 import { CommentsRepository } from '../../comments/infrastructure/comments.repository'
 import { CommentOutputModel } from '../../comments/api/models/output/comment.output.model'
@@ -39,40 +39,47 @@ export class PostsService {
     return paginatedPosts
   }
 
-  async getPostById(postId: string, userId?: string): Promise<Result<PostOutputModel>> {
+  async getPostById(postId: string, userId?: string): Promise<InterlayerResult<PostOutputModel | null>> {
     const post = await this.postsQueryRepository.getPostById(postId)
 
     if (!post) {
-      return { resultCode: ResultCode.NotFound }
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
-    return { resultCode: ResultCode.Success, data: await this.extendPostLikesInfo(post, userId) }
+    return InterlayerResult.Ok(await this.extendPostLikesInfo(post, userId))
   }
 
-  async createPost(postInputModel: CreatePostInputModel, userId?: string): Promise<Result<PostOutputModel>> {
+  async createPost(
+    postInputModel: CreatePostInputModel,
+    userId?: string,
+  ): Promise<InterlayerResult<PostOutputModel | null>> {
     const blog = await this.blogsQueryRepository.getBlogById(postInputModel.blogId)
 
     if (!blog) {
-      return { resultCode: ResultCode.NotFound }
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
     const newPost = new Post({ ...postInputModel, blogName: blog.name })
     const createdPost = await this.postsRepository.create(newPost)
 
-    return { resultCode: ResultCode.Success, data: await this.extendPostLikesInfo(createdPost, userId) }
+    return InterlayerResult.Ok(await this.extendPostLikesInfo(createdPost, userId))
   }
 
-  async createCommentToPost(postId: string, userId: string, content: string): Promise<Result<CommentOutputModel>> {
+  async createCommentToPost(
+    postId: string,
+    userId: string,
+    content: string,
+  ): Promise<InterlayerResult<CommentOutputModel | null>> {
     const post = await this.getPostById(postId)
 
     if (!post) {
-      return { resultCode: ResultCode.NotFound }
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
     const user = await this.usersQueryRepository.getUserById(userId)
 
     if (!user) {
-      return { resultCode: ResultCode.Unauthorized }
+      return InterlayerResult.Error(InterlayerResultCode.Unauthorized)
     }
 
     const newComment = new Comment({
@@ -84,25 +91,30 @@ export class PostsService {
 
     const comment = await this.commentsRepository.createCommentToPost(newComment)
 
-    return { resultCode: ResultCode.Success, data: CommentOutputModel.addUserStatus(comment, LikeStatus.None) }
+    return InterlayerResult.Ok(CommentOutputModel.addUserStatus(comment, LikeStatus.None))
   }
 
-  async updatePost(postId: string, updatedPost: UpdatePostInputModel): Promise<Result> {
+  async updatePost(postId: string, updatedPost: UpdatePostInputModel): Promise<InterlayerResult> {
     const isUpdated = await this.postsRepository.updatePost(postId, updatedPost)
-    return { resultCode: isUpdated ? ResultCode.Success : ResultCode.NotFound }
+
+    if (isUpdated) {
+      return InterlayerResult.Ok()
+    } else {
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
+    }
   }
 
-  async updateLikeStatus(userId: string, postId: string, newLikeStatus: LikeStatus): Promise<Result> {
+  async updateLikeStatus(userId: string, postId: string, newLikeStatus: LikeStatus): Promise<InterlayerResult> {
     const post = await this.getPostById(postId)
 
     if (!post) {
-      return { resultCode: ResultCode.NotFound }
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
     const myStatus = await this.likesQueryRepository.getPostLikeStatus(postId, userId)
 
     if (myStatus === newLikeStatus) {
-      return { resultCode: ResultCode.Success }
+      return InterlayerResult.Ok()
     }
 
     await this.updateLikesCount(postId, myStatus || LikeStatus.None, newLikeStatus)
@@ -113,12 +125,17 @@ export class PostsService {
       await this.likesService.createPostLikeStatus(postId, userId, newLikeStatus)
     }
 
-    return { resultCode: ResultCode.Success }
+    return InterlayerResult.Ok()
   }
 
-  async deletePostById(postId: string): Promise<Result> {
+  async deletePostById(postId: string): Promise<InterlayerResult> {
     const isDeleted = await this.postsRepository.deletePostById(postId)
-    return { resultCode: isDeleted ? ResultCode.Success : ResultCode.NotFound }
+
+    if (isDeleted) {
+      return InterlayerResult.Ok()
+    } else {
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
+    }
   }
 
   async updateLikesCount(postId: string, currentLikeStatus: LikeStatus, newLikeStatus: LikeStatus): Promise<boolean> {

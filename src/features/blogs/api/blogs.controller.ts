@@ -23,7 +23,7 @@ import { Request } from 'express'
 import { PostOutputModel } from '../../posts/api/models/output/post.output.model'
 import { PaginatedResponse } from '../../../common/models/common.model'
 import { UpdateBlogInputModel } from './models/input/update-blog.input.model'
-import { ResultCode, throwExceptionByResultCode } from '../../../common/models/result-layer.model'
+import { handleInterlayerResult } from '../../../common/models/result-layer.model'
 import { MongoIdPipe } from '../../../infrastructure/pipes/mongo-id.pipe'
 import { BasicAuthGuard } from '../../../infrastructure/guards/auth.guard'
 
@@ -56,13 +56,8 @@ export class BlogsController {
     @Query() query: QueryPostModel,
     @Param('blogId', MongoIdPipe) blogId: string,
   ): Promise<PaginatedResponse<PostOutputModel> | void> {
-    const { resultCode, data, errorMessages } = await this.blogsService.getPostsByBlogId(query, blogId, req.user?.id)
-
-    if (resultCode === ResultCode.Success && data) {
-      return data
-    }
-
-    return throwExceptionByResultCode(resultCode, errorMessages)
+    const result = await this.blogsService.getPostsByBlogId(query, blogId, req.user?.id)
+    return handleInterlayerResult(result)
   }
 
   @UseGuards(BasicAuthGuard)
@@ -80,17 +75,8 @@ export class BlogsController {
     @Param('blogId', MongoIdPipe) blogId: string,
     @Body() postCreateModel: CreatePostToBlogInputModel,
   ): Promise<PostOutputModel | void> {
-    const { resultCode, data, errorMessages } = await this.blogsService.createPostToBlog(
-      blogId,
-      postCreateModel,
-      req.user?.id,
-    )
-
-    if (resultCode === ResultCode.Success && data) {
-      return data
-    }
-
-    return throwExceptionByResultCode(resultCode, errorMessages)
+    const result = await this.blogsService.createPostToBlog(blogId, postCreateModel, req.user?.id)
+    return handleInterlayerResult(result)
   }
 
   @UseGuards(BasicAuthGuard)
@@ -100,21 +86,15 @@ export class BlogsController {
     @Param('blogId', MongoIdPipe) blogId: string,
     @Body() updateModel: UpdateBlogInputModel,
   ): Promise<void> {
-    const { resultCode, errorMessages } = await this.blogsService.updateBlog(blogId, updateModel)
-
-    if (resultCode !== ResultCode.Success) {
-      return throwExceptionByResultCode(resultCode, errorMessages)
-    }
+    const result = await this.blogsService.updateBlog(blogId, updateModel)
+    return handleInterlayerResult(result)
   }
 
   @UseGuards(BasicAuthGuard)
   @Delete(':blogId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('blogId', MongoIdPipe) blogId: string): Promise<void> {
-    const { resultCode, errorMessages } = await this.blogsService.deleteBlogById(blogId)
-
-    if (resultCode !== ResultCode.Success) {
-      return throwExceptionByResultCode(resultCode, errorMessages)
-    }
+    const result = await this.blogsService.deleteBlogById(blogId)
+    return handleInterlayerResult(result)
   }
 }

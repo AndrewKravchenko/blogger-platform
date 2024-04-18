@@ -6,7 +6,7 @@ import { CommentOutputModel } from './models/output/comment.output.model'
 import { UpdateCommentInputModel, UpdateCommentLikeStatusInputModel } from './models/input/update-comment.input.model'
 import { BearerAuthGuard } from '../../../infrastructure/guards/auth.guard'
 import { CommentOwnershipGuard } from '../../../infrastructure/guards/comment-ownership.guard'
-import { ResultCode, throwExceptionByResultCode } from '../../../common/models/result-layer.model'
+import { handleInterlayerResult } from '../../../common/models/result-layer.model'
 import { MongoIdPipe } from '../../../infrastructure/pipes/mongo-id.pipe'
 import { CurrentUserId } from '../../auth/decorators/current-user-id.param.decorator'
 
@@ -19,13 +19,8 @@ export class CommentsController {
     @Req() req: Request,
     @Param() { commentId }: InputCommentId,
   ): Promise<CommentOutputModel | void> {
-    const { resultCode, data } = await this.commentsService.getCommentById(commentId, req.user?.id)
-
-    if (resultCode === ResultCode.Success && data) {
-      return data
-    }
-
-    return throwExceptionByResultCode(resultCode)
+    const result = await this.commentsService.getCommentById(commentId, req.user?.id)
+    return handleInterlayerResult(result)
   }
 
   @UseGuards(BearerAuthGuard, CommentOwnershipGuard)

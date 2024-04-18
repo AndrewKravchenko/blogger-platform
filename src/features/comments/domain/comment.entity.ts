@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument } from 'mongoose'
 import { LikesCount, LikesCountSchema } from '../../likes/domain/like.entity'
-import { getCurrentDateISOString } from '../../../utils/common'
+import { getCurrentDateISOString } from '../../../infrastructure/utils/common'
 
 export type CommentDocument = HydratedDocument<Comment>
 

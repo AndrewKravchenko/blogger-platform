@@ -5,7 +5,7 @@ import { UserOutputModel } from './models/output/user.output.model'
 import { UsersService } from '../application/users.service'
 import { QueryUserModel } from './models/input/query-user.input.model'
 import { PaginatedResponse } from '../../../common/models/common.model'
-import { ResultCode, throwExceptionByResultCode } from '../../../common/models/result-layer.model'
+import { handleInterlayerResult } from '../../../common/models/result-layer.model'
 import { BasicAuthGuard } from '../../../infrastructure/guards/auth.guard'
 import { MongoIdPipe } from '../../../infrastructure/pipes/mongo-id.pipe'
 
@@ -25,22 +25,14 @@ export class UsersController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   async create(@Body() userInputModel: CreateUserInputModel): Promise<UserOutputModel | void> {
-    const { resultCode, data, errorMessages } = await this.usersService.create(userInputModel)
-
-    if (resultCode === ResultCode.Success && data) {
-      return data
-    }
-
-    return throwExceptionByResultCode(resultCode, errorMessages)
+    const result = await this.usersService.create(userInputModel)
+    return handleInterlayerResult(result)
   }
 
   @Delete(':userId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Param('userId', MongoIdPipe) userId: string): Promise<void> {
-    const { resultCode, errorMessages } = await this.usersService.deleteById(userId)
-
-    if (resultCode !== ResultCode.Success) {
-      return throwExceptionByResultCode(resultCode, errorMessages)
-    }
+    const result = await this.usersService.deleteById(userId)
+    return handleInterlayerResult(result)
   }
 }

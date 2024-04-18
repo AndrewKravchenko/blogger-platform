@@ -2,7 +2,7 @@ import { Controller, Delete, Get, HttpCode, HttpStatus, Param, UseGuards } from 
 import { SessionOutputModel } from './models/output/session.output.model'
 import { SessionsService } from '../application/sessions.service'
 import { InputDeviceIdModel } from './models/input/session.input.model'
-import { ResultCode, throwExceptionByResultCode } from '../../../common/models/result-layer.model'
+import { handleInterlayerResult } from '../../../common/models/result-layer.model'
 import { JwtCookieAuthGuard } from '../../auth/guards/jwt-cookie-auth.guard'
 import { CurrentUserId } from '../../auth/decorators/current-user-id.param.decorator'
 import { CurrentUser } from '../../auth/decorators/current-user.param.decorator'
@@ -25,13 +25,8 @@ export class SessionsController {
     @CurrentUserId() currentUserId: string,
     @Param() { deviceId }: InputDeviceIdModel,
   ): Promise<void> {
-    const { resultCode } = await this.sessionsService.deleteSessionByDeviceId(currentUserId, deviceId)
-
-    if (resultCode === ResultCode.Success) {
-      return
-    }
-
-    return throwExceptionByResultCode(resultCode)
+    const result = await this.sessionsService.deleteSessionByDeviceId(currentUserId, deviceId)
+    return handleInterlayerResult(result)
   }
 
   @UseGuards(JwtCookieAuthGuard)

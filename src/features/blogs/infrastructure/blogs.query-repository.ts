@@ -4,7 +4,7 @@ import { FilterQuery, Model } from 'mongoose'
 import { InjectModel } from '@nestjs/mongoose'
 import { BlogOutputMapper, BlogOutputModel } from '../api/models/output/blog.output.model'
 import { QueryBlogInputModel } from '../api/models/input/query-blog.input.model'
-import { paginationSkip } from '../../../utils/queryParams'
+import { paginationSkip } from '../../../infrastructure/utils/queryParams'
 import { PaginatedResponse } from '../../../common/models/common.model'
 
 @Injectable()

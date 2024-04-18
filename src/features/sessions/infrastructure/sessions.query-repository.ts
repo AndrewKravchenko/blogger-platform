@@ -3,7 +3,7 @@ import { Session } from '../domain/session.entity'
 import { Model } from 'mongoose'
 import { InjectModel } from '@nestjs/mongoose'
 import { SessionOutputMapper, SessionOutputModel } from '../api/models/output/session.output.model'
-import { getCurrentDateISOString } from '../../../utils/common'
+import { getCurrentDateISOString } from '../../../infrastructure/utils/common'
 
 @Injectable()
 export class SessionsQueryRepository {

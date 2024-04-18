@@ -5,9 +5,9 @@ import { UsersQueryRepository } from '../../users/infrastructure/users.query-rep
 import bcrypt from 'bcrypt'
 import { SessionsRepository } from '../../sessions/infrastructure/sessions.repository'
 import { JwtService } from '@nestjs/jwt'
-import { Result, ResultCode } from '../../../common/models/result-layer.model'
+import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
 import { v4 as uuidv4 } from 'uuid'
-import { convertUnixTimestampToISO } from '../../../utils/common'
+import { convertUnixTimestampToISO } from '../../../infrastructure/utils/common'
 import { Session } from '../../sessions/domain/session.entity'
 import { MeOutputModel } from '../../users/api/models/output/user.output.model'
 import { UsersService } from '../../users/application/users.service'
@@ -45,27 +45,27 @@ export class AuthService {
     private readonly sessionsRepository: SessionsRepository,
   ) {}
 
-  async getMe(userId: string): Promise<Result<MeOutputModel>> {
+  async getMe(userId: string): Promise<InterlayerResult<MeOutputModel | null>> {
     const user = await this.usersQueryRepository.getMe(userId)
-
     if (user) {
-      return { resultCode: ResultCode.Success, data: user }
+      return InterlayerResult.Ok(user)
     } else {
-      return { resultCode: ResultCode.Unauthorized }
+      return InterlayerResult.Error(InterlayerResultCode.Unauthorized)
     }
   }
 
-  async signUp(userInputModel: SignUpUserInputModel): Promise<Result> {
+  async signUp(userInputModel: SignUpUserInputModel): Promise<InterlayerResult> {
     const { login, password, email } = userInputModel
     const existingUser = await this.usersQueryRepository.getUserByLoginOrEmail(login, email)
 
     if (existingUser) {
       const incorrectField = existingUser.login === login ? 'login' : 'email'
 
-      return {
-        resultCode: ResultCode.BadRequest,
-        errorMessages: [{ message: `Incorrect ${incorrectField}!`, field: `${incorrectField}` }],
-      }
+      return InterlayerResult.Error(
+        InterlayerResultCode.BadRequest,
+        `Incorrect ${incorrectField}!`,
+        `${incorrectField}`,
+      )
     }
 
     const confirmationCode = uuidv4()
@@ -90,15 +90,15 @@ export class AuthService {
     await this.usersRepository.create(newUser)
     await this.emailsService.sendRegistrationConfirmationEmail(email, confirmationCode)
 
-    return { resultCode: ResultCode.Success }
+    return InterlayerResult.Ok()
   }
 
-  async confirmEmail(code: string): Promise<Result> {
-    const errorMessages = [{ message: 'Incorrect code!', field: 'code' }]
+  async confirmEmail(code: string): Promise<InterlayerResult> {
     const user = await this.usersRepository.getUserByConfirmationCode(code)
+    const incorrectCodeError = InterlayerResult.Error(InterlayerResultCode.BadRequest, 'Incorrect code!', 'code')
 
     if (!user?.emailConfirmation) {
-      return { resultCode: ResultCode.BadRequest, errorMessages }
+      return incorrectCodeError
     }
 
     const isCorrectCode = user.emailConfirmation.confirmationCode === code
@@ -106,17 +106,17 @@ export class AuthService {
 
     if (isCorrectCode && !isExpired) {
       await this.usersRepository.markEmailConfirmed(user.id)
-      return { resultCode: ResultCode.Success }
+      return InterlayerResult.Ok()
     }
 
-    return { resultCode: ResultCode.BadRequest, errorMessages }
+    return incorrectCodeError
   }
 
-  async resendRegistrationEmail(email: string): Promise<Result> {
+  async resendRegistrationEmail(email: string): Promise<InterlayerResult> {
     const user = await this.usersQueryRepository.getUserByLoginOrEmail(email)
 
     if (!user?.emailConfirmation) {
-      return { resultCode: ResultCode.BadRequest, errorMessages: [{ message: 'Incorrect email!', field: 'email' }] }
+      return InterlayerResult.Error(InterlayerResultCode.BadRequest, 'Incorrect email!', 'email')
     }
 
     const confirmationCode = uuidv4()
@@ -124,14 +124,14 @@ export class AuthService {
     await this.usersRepository.changeEmailConfirmationCode(user.id, confirmationCode)
     await this.emailsService.sendRegistrationConfirmationEmail(email, confirmationCode)
 
-    return { resultCode: ResultCode.Success }
+    return InterlayerResult.Ok()
   }
 
-  async resetPassword(email: string): Promise<Result> {
+  async resetPassword(email: string): Promise<InterlayerResult> {
     const user = await this.usersQueryRepository.getUserByLoginOrEmail(email)
 
     if (!user) {
-      return { resultCode: ResultCode.Success }
+      return InterlayerResult.Ok()
     }
 
     const code = uuidv4()
@@ -141,29 +141,29 @@ export class AuthService {
     await this.usersRepository.createRecoveryCode(user.id, passwordRecovery)
     await this.emailsService.sendPasswordRecoveryEmail(email, code)
 
-    return { resultCode: ResultCode.Success }
+    return InterlayerResult.Ok()
   }
 
-  async changePassword({ newPassword, recoveryCode }: NewPasswordRecoveryInputModel): Promise<Result> {
+  async changePassword({ newPassword, recoveryCode }: NewPasswordRecoveryInputModel): Promise<InterlayerResult> {
     const user = await this.usersRepository.getUserByPasswordRecoveryCode(recoveryCode)
 
     if (!user?.passwordRecovery) {
-      return { resultCode: ResultCode.BadRequest }
+      return InterlayerResult.Error(InterlayerResultCode.BadRequest)
     }
 
     const isExpired = user.passwordRecovery.expirationDate < new Date()
 
     if (isExpired) {
-      return { resultCode: ResultCode.BadRequest }
+      return InterlayerResult.Error(InterlayerResultCode.BadRequest)
     }
 
     const passwordData = await this.usersService.generatePasswordHash(newPassword)
     await this.usersRepository.changePassword(user.id, passwordData)
 
-    return { resultCode: ResultCode.Success }
+    return InterlayerResult.Ok()
   }
 
-  async login(userId: string, ip = '', deviceName = ''): Promise<Result<TokenPair>> {
+  async login(userId: string, ip = '', deviceName = ''): Promise<InterlayerResult<TokenPair>> {
     const sessionsCount = await this.sessionsRepository.getUserSessionsCount(userId)
 
     if (sessionsCount > 5) {
@@ -171,7 +171,7 @@ export class AuthService {
     }
 
     const payload = { userId }
-    const { accessToken, refreshToken } = this.createTokens(payload)
+    const { accessToken, refreshToken } = this.signTokens(payload)
     const { iat, exp, deviceId } = this.jwtService.decode(refreshToken)
 
     const newSession = new Session({
@@ -185,15 +185,12 @@ export class AuthService {
 
     await this.sessionsRepository.createSession(newSession)
 
-    return {
-      resultCode: ResultCode.Success,
-      data: { accessToken, refreshToken },
-    }
+    return InterlayerResult.Ok({ accessToken, refreshToken })
   }
 
-  async refreshAccessToken(userId: string, deviceId: string, ip = ''): Promise<Result<TokenPair>> {
+  async refreshAccessToken(userId: string, deviceId: string, ip = ''): Promise<InterlayerResult<TokenPair>> {
     const payload = { userId }
-    const { accessToken, refreshToken } = this.createTokens(payload, deviceId)
+    const { accessToken, refreshToken } = this.signTokens(payload, deviceId)
     const { iat, exp } = this.jwtService.decode(refreshToken)
 
     const refreshedSession: RefreshedSession = {
@@ -203,10 +200,7 @@ export class AuthService {
     }
     await this.sessionsRepository.refreshSession(userId, deviceId, refreshedSession)
 
-    return {
-      resultCode: ResultCode.Success,
-      data: { accessToken, refreshToken },
-    }
+    return InterlayerResult.Ok({ accessToken, refreshToken })
   }
 
   async logout(deviceId: string): Promise<void> {
@@ -229,11 +223,11 @@ export class AuthService {
     return null
   }
 
-  verifyToken(token: string): JwtPayload {
+  verifyToken(token: string): JwtPayload | null {
     try {
-      return this.jwtService.verify(token, { secret: process.env.JWT_SECRET })
+      return this.jwtService.verify<JwtPayload>(token, { secret: process.env.JWT_SECRET })
     } catch (e) {
-      throw new UnauthorizedException()
+      return null
     }
   }
 
@@ -261,7 +255,7 @@ export class AuthService {
     return lastActiveDate === session?.lastActiveDate
   }
 
-  private createTokens(payload: any, deviceId?: string): TokenPair {
+  private signTokens(payload: any, deviceId?: string): TokenPair {
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
       expiresIn: 15 * 60 * 1000,

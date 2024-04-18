@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument } from 'mongoose'
 import { CreateUserModel } from '../api/models/input/create-user-input.model'
-import { getCurrentDateISOString } from '../../../utils/common'
+import { getCurrentDateISOString } from '../../../infrastructure/utils/common'
 
 export type UserDocument = HydratedDocument<User>
 

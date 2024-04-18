@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose'
 import { HydratedDocument } from 'mongoose'
 import { LikeCreateModel } from '../models/input/create-like.input.model'
-import { getCurrentDateISOString } from '../../../utils/common'
+import { getCurrentDateISOString } from '../../../infrastructure/utils/common'
 
 export enum LikeStatus {
   None = 'None',

@@ -4,7 +4,7 @@ import { LikesQueryRepository } from '../../likes/infrastructure/likes.query-rep
 import { CommentsQueryRepository } from '../infrastructure/comments.query-repository'
 import { CommentOutputModel } from '../api/models/output/comment.output.model'
 import { CommentsRepository } from '../infrastructure/comments.repository'
-import { Result, ResultCode } from '../../../common/models/result-layer.model'
+import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
 import { LikesService } from '../../likes/application/likes.service'
 import { LikesRepository } from '../../likes/infrastructure/likes.repository'
 
@@ -18,16 +18,16 @@ export class CommentsService {
     private readonly likesQueryRepository: LikesQueryRepository,
   ) {}
 
-  async getCommentById(commentId: string, userId?: string): Promise<Result<CommentOutputModel>> {
+  async getCommentById(commentId: string, userId?: string): Promise<InterlayerResult<CommentOutputModel | null>> {
     const comment = await this.commentsQueryRepository.getCommentById(commentId)
 
     if (!comment) {
-      return { resultCode: ResultCode.NotFound }
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
     const myStatus = await this.likesQueryRepository.getCommentLikeStatus(commentId, userId)
 
-    return { resultCode: ResultCode.Success, data: CommentOutputModel.addUserStatus(comment, myStatus) }
+    return InterlayerResult.Ok(CommentOutputModel.addUserStatus(comment, myStatus))
   }
 
   async updatePostLikeStatus(postId: string, userId: string, newLikeStatus: LikeStatus): Promise<boolean> {
@@ -38,17 +38,17 @@ export class CommentsService {
     return await this.commentsRepository.updateComment(commentId, content)
   }
 
-  async updateLikeStatus(userId: string, commentId: string, newLikeStatus: LikeStatus): Promise<Result> {
+  async updateLikeStatus(userId: string, commentId: string, newLikeStatus: LikeStatus): Promise<InterlayerResult> {
     const comment = await this.commentsQueryRepository.getCommentById(commentId)
 
     if (!comment) {
-      return { resultCode: ResultCode.NotFound }
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
     const currentLikeStatus = await this.likesQueryRepository.getCommentLikeStatus(commentId, userId)
 
     if (currentLikeStatus === newLikeStatus) {
-      return { resultCode: ResultCode.Success }
+      return InterlayerResult.Ok()
     }
 
     await this.updateLikesCount(commentId, currentLikeStatus || LikeStatus.None, newLikeStatus)
@@ -59,7 +59,7 @@ export class CommentsService {
       await this.likesService.createCommentLikeStatus(commentId, userId, newLikeStatus)
     }
 
-    return { resultCode: ResultCode.Success }
+    return InterlayerResult.Ok()
   }
 
   async updateLikesCount(

@@ -5,7 +5,7 @@ import { CreateUserInputModel } from '../api/models/input/create-user-input.mode
 import { User } from '../domain/user.entity'
 import { UsersQueryRepository } from '../infrastructure/users.query-repository'
 import { FullUserOutputModel, UserOutputModel } from '../api/models/output/user.output.model'
-import { Result, ResultCode } from '../../../common/models/result-layer.model'
+import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
 
 export type PasswordHashResult = {
   passwordSalt: string
@@ -35,17 +35,18 @@ export class UsersService {
     return null
   }
 
-  async create(userInputModel: CreateUserInputModel): Promise<Result<UserOutputModel>> {
+  async create(userInputModel: CreateUserInputModel): Promise<InterlayerResult<Nullable<UserOutputModel>>> {
     const { login, password, email } = userInputModel
     const existingUser = await this.usersQueryRepository.getUserByLoginOrEmail(login, email)
 
     if (existingUser) {
       const incorrectField = existingUser.login === login ? 'login' : 'email'
 
-      return {
-        resultCode: ResultCode.BadRequest,
-        errorMessages: [{ message: `Incorrect ${incorrectField}!`, field: `${incorrectField}` }],
-      }
+      return InterlayerResult.Error(
+        InterlayerResultCode.BadRequest,
+        `Incorrect ${incorrectField}!`,
+        `${incorrectField}`,
+      )
     }
 
     const { passwordSalt, passwordHash } = await this.generatePasswordHash(password)
@@ -59,12 +60,17 @@ export class UsersService {
 
     const createdUser = await this.usersRepository.create(newUser)
 
-    return { resultCode: ResultCode.Success, data: createdUser }
+    return InterlayerResult.Ok(createdUser)
   }
 
-  async deleteById(userId: string): Promise<Result> {
+  async deleteById(userId: string): Promise<InterlayerResult> {
     const isDeleted = await this.usersRepository.deleteById(userId)
-    return { resultCode: isDeleted ? ResultCode.Success : ResultCode.NotFound }
+
+    if (isDeleted) {
+      return InterlayerResult.Ok()
+    } else {
+      return InterlayerResult.Error(InterlayerResultCode.NotFound)
+    }
   }
 
   async generatePasswordHash(password: string): Promise<PasswordHashResult> {

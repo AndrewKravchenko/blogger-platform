@@ -24,7 +24,6 @@ import { AuthService } from './features/auth/application/auth.service'
 import { Comment, CommentSchema } from './features/comments/domain/comment.entity'
 import { CommentsController } from './features/comments/api/comments.controller'
 import { CommentsQueryRepository } from './features/comments/infrastructure/comments.query-repository'
-import { CommentsService } from './features/comments/application/comments.service'
 import { TestingService } from './features/testing/application/testing.service'
 import { TestingController } from './features/testing/testing.controller'
 import { AuthController } from './features/auth/api/auth.controller'
@@ -52,6 +51,9 @@ import { DeleteBlogHandler } from './features/blogs/application/use-cases/comman
 import { CreateBlogHandler } from './features/blogs/application/use-cases/commands/create-blog.handler'
 import { CreatePostToBlogHandler } from './features/blogs/application/use-cases/commands/create-post-to-blog.handler'
 import { UpdateBlogHandler } from './features/blogs/application/use-cases/commands/update-blog.handler'
+import { GetCommentByIdHandler } from './features/comments/application/use-cases/queries/get-comment-by-id.handler'
+import { UpdateCommentHandler } from './features/comments/application/use-cases/commands/update-comment.handler'
+import { UpdateCommentLikeStatusHandler } from './features/comments/application/use-cases/commands/update-comment-like-status.handler'
 
 const usersProviders: Provider[] = [
   UsersRepository,
@@ -68,7 +70,13 @@ const postsProviders: Provider[] = [PostsRepository, PostsQueryRepository, Posts
 const blogsProviders: Provider[] = [BlogsQueryRepository, BlogsRepository]
 const likesProviders: Provider[] = [LikesQueryRepository, LikesRepository, LikesService]
 const sessionsProviders: Provider[] = [SessionsRepository, SessionsQueryRepository, SessionsService]
-const commentsProviders: Provider[] = [CommentsQueryRepository, CommentsRepository, CommentsService]
+const commentsProviders: Provider[] = [
+  CommentsQueryRepository,
+  CommentsRepository,
+  GetCommentByIdHandler,
+  UpdateCommentHandler,
+  UpdateCommentLikeStatusHandler,
+]
 const requestLogsProviders: Provider[] = [RequestLogsRepository]
 const emailsProviders: Provider[] = [EmailsService]
 const testingProviders: Provider[] = [TestingService]

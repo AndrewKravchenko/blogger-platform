@@ -10,7 +10,6 @@ import { LoggerMiddleware } from './infrastructure/middlewares/logger.middleware
 import { ConfigModule } from '@nestjs/config'
 import { BlogsController } from './features/blogs/api/blogs.controller'
 import { BlogsRepository } from './features/blogs/infrastructure/blogs.repository'
-import { BlogsService } from './features/blogs/application/blogs.service'
 import { BlogsQueryRepository } from './features/blogs/infrastructure/blogs.query-repository'
 import { Blog, BlogSchema } from './features/blogs/domain/blog.entity'
 import { PostsController } from './features/posts/api/posts.controller'
@@ -47,11 +46,26 @@ import { JwtCookieStrategy } from './features/auth/strategies/jwt-cookie.strateg
 import { CommentsRepository } from './features/comments/infrastructure/comments.repository'
 import { LikesRepository } from './features/likes/infrastructure/likes.repository'
 import { DecodeUserIdMiddleware } from './infrastructure/middlewares/user-id .middleware'
+import { CqrsModule } from '@nestjs/cqrs'
+import { GetPostsByBlogIdHandler } from './features/blogs/application/use-cases/queries/get-posts-by-blog-id.handler'
+import { DeleteBlogHandler } from './features/blogs/application/use-cases/commands/delete-blog.handler'
+import { CreateBlogHandler } from './features/blogs/application/use-cases/commands/create-blog.handler'
+import { CreatePostToBlogHandler } from './features/blogs/application/use-cases/commands/create-post-to-blog.handler'
+import { UpdateBlogHandler } from './features/blogs/application/use-cases/commands/update-blog.handler'
 
-const usersProviders: Provider[] = [UsersRepository, UsersService, UsersQueryRepository]
+const usersProviders: Provider[] = [
+  UsersRepository,
+  UsersService,
+  UsersQueryRepository,
+  GetPostsByBlogIdHandler,
+  CreateBlogHandler,
+  CreatePostToBlogHandler,
+  UpdateBlogHandler,
+  DeleteBlogHandler,
+]
 const authProviders: Provider[] = [AuthService, LocalStrategy, JwtStrategy, JwtCookieStrategy, JwtService]
 const postsProviders: Provider[] = [PostsRepository, PostsQueryRepository, PostsService]
-const blogsProviders: Provider[] = [BlogsQueryRepository, BlogsRepository, BlogsService]
+const blogsProviders: Provider[] = [BlogsQueryRepository, BlogsRepository]
 const likesProviders: Provider[] = [LikesQueryRepository, LikesRepository, LikesService]
 const sessionsProviders: Provider[] = [SessionsRepository, SessionsQueryRepository, SessionsService]
 const commentsProviders: Provider[] = [CommentsQueryRepository, CommentsRepository, CommentsService]
@@ -61,6 +75,7 @@ const testingProviders: Provider[] = [TestingService]
 
 @Module({
   imports: [
+    CqrsModule,
     ConfigModule.forRoot({
       envFilePath: './env/.dev.env',
       isGlobal: true,

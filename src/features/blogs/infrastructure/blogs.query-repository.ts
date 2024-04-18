@@ -11,7 +11,7 @@ import { PaginatedResponse } from '../../../common/models/common.model'
 export class BlogsQueryRepository {
   constructor(@InjectModel(Blog.name) private blogModel: Model<Blog>) {}
 
-  public async getBlogs({
+  async getBlogs({
     sortBy,
     sortDirection,
     pageNumber,
@@ -42,7 +42,7 @@ export class BlogsQueryRepository {
     }
   }
 
-  public async getBlogById(blogId: string): Promise<BlogOutputModel | null> {
+  async getBlogById(blogId: string): Promise<BlogOutputModel | null> {
     const blog = await this.blogModel.findById(blogId)
 
     if (!blog) {

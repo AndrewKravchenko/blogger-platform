@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule, Provider, RequestMethod } from '@nestjs/common'
+import { MiddlewareConsumer, Module, NestModule, Provider } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { appSettings } from './settings/app-settings'
 import { UsersRepository } from './features/users/infrastructure/users.repository'
@@ -34,7 +34,6 @@ import { SessionsQueryRepository } from './features/sessions/infrastructure/sess
 import { SessionsService } from './features/sessions/application/sessions.service'
 import { SessionsController } from './features/sessions/api/sessions.controller'
 import { Session, SessionSchema } from './features/sessions/domain/session.entity'
-import { RateLimiterMiddleware } from './infrastructure/middlewares/rate-limiter-middleware'
 import { RequestLog, RequestLogSchema } from './features/requests/domain/request-log.entity'
 import { RequestLogsRepository } from './features/requests/infrastructure/request-logs.repository'
 import { JwtStrategy } from './features/auth/strategies/jwt.strategy'
@@ -54,6 +53,16 @@ import { UpdateBlogHandler } from './features/blogs/application/use-cases/comman
 import { GetCommentByIdHandler } from './features/comments/application/use-cases/queries/get-comment-by-id.handler'
 import { UpdateCommentHandler } from './features/comments/application/use-cases/commands/update-comment.handler'
 import { UpdateCommentLikeStatusHandler } from './features/comments/application/use-cases/commands/update-comment-like-status.handler'
+import { DeletePostHandler } from './features/posts/application/use-cases/commands/delete-post.handler'
+import { CreatePostHandler } from './features/posts/application/use-cases/commands/create-post.handler'
+import { UpdatePostHandler } from './features/posts/application/use-cases/commands/update-post.handler'
+import { UpdatePostLikeStatusHandler } from './features/posts/application/use-cases/commands/update-post-like-status.handler'
+import { CreateCommentToPostHandler } from './features/posts/application/use-cases/commands/create-comment-to-post.handler'
+import { GetPostsHandler } from './features/posts/application/use-cases/queries/get-posts.handler'
+import { GetPostByIdHandler } from './features/posts/application/use-cases/queries/get-post-by-id.handler'
+import { DeleteCommentHandler } from './features/comments/application/use-cases/commands/delete-comment.handler'
+import { BlogIsExistConstraint } from './infrastructure/decorators/validate/is-existing-blog'
+import { GetPostCommentsHandler } from './features/posts/application/use-cases/queries/get-post-comments.handler'
 
 const usersProviders: Provider[] = [
   UsersRepository,
@@ -66,7 +75,19 @@ const usersProviders: Provider[] = [
   DeleteBlogHandler,
 ]
 const authProviders: Provider[] = [AuthService, LocalStrategy, JwtStrategy, JwtCookieStrategy, JwtService]
-const postsProviders: Provider[] = [PostsRepository, PostsQueryRepository, PostsService]
+const postsProviders: Provider[] = [
+  PostsRepository,
+  PostsQueryRepository,
+  PostsService,
+  GetPostsHandler,
+  GetPostByIdHandler,
+  GetPostCommentsHandler,
+  CreatePostHandler,
+  CreateCommentToPostHandler,
+  UpdatePostHandler,
+  UpdatePostLikeStatusHandler,
+  DeletePostHandler,
+]
 const blogsProviders: Provider[] = [BlogsQueryRepository, BlogsRepository]
 const likesProviders: Provider[] = [LikesQueryRepository, LikesRepository, LikesService]
 const sessionsProviders: Provider[] = [SessionsRepository, SessionsQueryRepository, SessionsService]
@@ -76,6 +97,7 @@ const commentsProviders: Provider[] = [
   GetCommentByIdHandler,
   UpdateCommentHandler,
   UpdateCommentLikeStatusHandler,
+  DeleteCommentHandler,
 ]
 const requestLogsProviders: Provider[] = [RequestLogsRepository]
 const emailsProviders: Provider[] = [EmailsService]
@@ -133,6 +155,7 @@ const testingProviders: Provider[] = [TestingService]
     ...requestLogsProviders,
     ...emailsProviders,
     ...testingProviders,
+    BlogIsExistConstraint,
   ],
   controllers: [
     AuthController,
@@ -146,12 +169,8 @@ const testingProviders: Provider[] = [TestingService]
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(LoggerMiddleware)
-      .forRoutes('*')
-      .apply(DecodeUserIdMiddleware)
-      .forRoutes('*')
-      .apply(RateLimiterMiddleware)
-      .forRoutes({ path: 'auth/login', method: RequestMethod.POST })
+    consumer.apply(LoggerMiddleware).forRoutes('*').apply(DecodeUserIdMiddleware).forRoutes('*')
+    // .apply(RateLimiterMiddleware)
+    // .forRoutes({ path: 'auth/login', method: RequestMethod.POST })
   }
 }

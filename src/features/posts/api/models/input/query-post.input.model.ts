@@ -19,3 +19,22 @@ export class QueryPostModel {
   @Max(50)
   pageSize: number = 10
 }
+
+export class QueryPostCommentsModel {
+  @IsIn(['createdAt'])
+  sortBy = 'createdAt' as const
+
+  @IsIn(['asc', 'desc'])
+  sortDirection: 'asc' | 'desc' = 'desc'
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pageNumber: number = 1
+
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  pageSize: number = 10
+}

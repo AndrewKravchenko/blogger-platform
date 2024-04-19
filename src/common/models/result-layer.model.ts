@@ -84,6 +84,6 @@ export const throwExceptionByInterlayerResultCode = (
       throw new BadRequestException(errorMessages)
 
     default:
-      throw new InternalServerErrorException(errorMessages)
+      throw new BadRequestException('some error occurred, please try again late')
   }
 }

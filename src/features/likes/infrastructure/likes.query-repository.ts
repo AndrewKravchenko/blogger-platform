@@ -23,7 +23,7 @@ export class LikesQueryRepository {
       return null
     }
 
-    const like = await this.likeModel.findById({ postId, userId })
+    const like = await this.likeModel.findOne({ postId, userId })
 
     if (!like) {
       return null
@@ -36,8 +36,7 @@ export class LikesQueryRepository {
     if (!userId) {
       return null
     }
-
-    const like = await this.likeModel.findById({ commentId, userId })
+    const like = await this.likeModel.findOne({ commentId, userId })
 
     if (!like) {
       return null

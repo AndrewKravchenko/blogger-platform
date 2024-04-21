@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, Req, UseGuards } from '@nestjs/common'
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Put, Req, UseGuards } from '@nestjs/common'
 import { InputCommentId } from './models/input/comment.input.model'
 import { Request } from 'express'
 import { CommentOutputModel } from './models/output/comment.output.model'
@@ -12,6 +12,7 @@ import { CommandBus, QueryBus } from '@nestjs/cqrs'
 import { UpdateCommentLikeStatusCommand } from '../application/use-cases/commands/update-comment-like-status.handler'
 import { UpdateCommentCommand } from '../application/use-cases/commands/update-comment.handler'
 import { GetCommentByIdQueryPayload } from '../application/use-cases/queries/get-comment-by-id.handler'
+import { DeleteCommentCommand } from '../application/use-cases/commands/delete-comment.handler'
 
 @Controller('comments')
 export class CommentsController {
@@ -34,6 +35,7 @@ export class CommentsController {
 
   @UseGuards(BearerAuthGuard, CommentOwnershipGuard)
   @Put(':commentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
   async updateComment(
     @Param('commentId', MongoIdPipe) commentId: string,
     @Body() { content }: UpdateCommentInputModel,
@@ -47,6 +49,7 @@ export class CommentsController {
 
   @UseGuards(BearerAuthGuard)
   @Put(':commentId/like-status')
+  @HttpCode(HttpStatus.NO_CONTENT)
   async updateLikeStatus(
     @Param('commentId', MongoIdPipe) commentId: string,
     @CurrentUserId() currentUserId: string,
@@ -54,6 +57,17 @@ export class CommentsController {
   ): Promise<CommentOutputModel | void> {
     const result = await this.commandBus.execute<UpdateCommentLikeStatusCommand, InterlayerResult>(
       new UpdateCommentLikeStatusCommand(commentId, currentUserId, likeStatus),
+    )
+
+    return handleInterlayerResult(result)
+  }
+
+  @UseGuards(BearerAuthGuard, CommentOwnershipGuard)
+  @Delete(':commentId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async delete(@Param('commentId', MongoIdPipe) commentId: string): Promise<void> {
+    const result = await this.commandBus.execute<DeleteCommentCommand, InterlayerResult>(
+      new DeleteCommentCommand(commentId),
     )
 
     return handleInterlayerResult(result)

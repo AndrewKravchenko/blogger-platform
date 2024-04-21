@@ -44,4 +44,9 @@ export class CommentsRepository {
 
     return CommentOutputMapper(comment)
   }
+
+  async deleteComment(commentId: string): Promise<boolean> {
+    const result = await this.commentModel.deleteOne({ _id: new ObjectId(commentId) })
+    return !!result.deletedCount
+  }
 }

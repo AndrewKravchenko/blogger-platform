@@ -3,6 +3,7 @@ import { InterlayerResult, InterlayerResultCode } from '../../../../../common/mo
 import { CommentOutputModel } from '../../../api/models/output/comment.output.model'
 import { CommentsQueryRepository } from '../../../infrastructure/comments.query-repository'
 import { LikesQueryRepository } from '../../../../likes/infrastructure/likes.query-repository'
+import { LikeStatus } from '../../../../likes/domain/like.entity'
 
 export class GetCommentByIdQueryPayload {
   constructor(
@@ -28,7 +29,7 @@ export class GetCommentByIdHandler implements IQueryHandler<GetCommentByIdQueryP
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
-    const myStatus = await this.likesQueryRepository.getCommentLikeStatus(commentId, userId)
+    const myStatus = (await this.likesQueryRepository.getCommentLikeStatus(commentId, userId)) || LikeStatus.None
 
     return InterlayerResult.Ok(CommentOutputModel.addUserStatus(comment, myStatus))
   }

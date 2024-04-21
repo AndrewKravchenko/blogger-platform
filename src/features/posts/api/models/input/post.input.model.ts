@@ -1,6 +1,6 @@
 import { IsMongoId, IsString, Length } from 'class-validator'
 import { Trim } from '../../../../../infrastructure/decorators/transform/trim'
-import { BlogIsExist } from '../../../../../infrastructure/decorators/validate/is-existing-blog'
+import { BlogIsExist } from '../../../../../infrastructure/decorators/validate/blog-is-exist'
 
 export class BasePostInputModel {
   @Trim()

@@ -61,8 +61,8 @@ import { CreateCommentToPostHandler } from './features/posts/application/use-cas
 import { GetPostsHandler } from './features/posts/application/use-cases/queries/get-posts.handler'
 import { GetPostByIdHandler } from './features/posts/application/use-cases/queries/get-post-by-id.handler'
 import { DeleteCommentHandler } from './features/comments/application/use-cases/commands/delete-comment.handler'
-import { BlogIsExistConstraint } from './infrastructure/decorators/validate/is-existing-blog'
 import { GetPostCommentsHandler } from './features/posts/application/use-cases/queries/get-post-comments.handler'
+import { BlogIsExistConstraint } from './infrastructure/decorators/validate/blog-is-exist'
 
 const usersProviders: Provider[] = [
   UsersRepository,

@@ -1,13 +1,12 @@
 import { MiddlewareConsumer, Module, NestModule, Provider } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
-import { appSettings } from './settings/app-settings'
 import { UsersRepository } from './features/users/infrastructure/users.repository'
 import { UsersService } from './features/users/application/users.service'
 import { UsersQueryRepository } from './features/users/infrastructure/users.query-repository'
 import { User, UserSchema } from './features/users/domain/user.entity'
 import { UsersController } from './features/users/api/users.controller'
 import { LoggerMiddleware } from './infrastructure/middlewares/logger.middleware'
-import { ConfigModule } from '@nestjs/config'
+import { ConfigModule, ConfigService } from '@nestjs/config'
 import { BlogsController } from './features/blogs/api/blogs.controller'
 import { BlogsRepository } from './features/blogs/infrastructure/blogs.repository'
 import { BlogsQueryRepository } from './features/blogs/infrastructure/blogs.query-repository'
@@ -63,6 +62,8 @@ import { GetPostByIdHandler } from './features/posts/application/use-cases/queri
 import { DeleteCommentHandler } from './features/comments/application/use-cases/commands/delete-comment.handler'
 import { GetPostCommentsHandler } from './features/posts/application/use-cases/queries/get-post-comments.handler'
 import { BlogIsExistConstraint } from './infrastructure/decorators/validate/blog-is-exist'
+import configuration, { Configuration, validate } from './settings/configuration'
+import process from 'process'
 
 const usersProviders: Provider[] = [
   UsersRepository,
@@ -107,10 +108,28 @@ const testingProviders: Provider[] = [TestingService]
   imports: [
     CqrsModule,
     ConfigModule.forRoot({
-      envFilePath: './env/.dev.env',
       isGlobal: true,
+      load: [configuration],
+      validate,
+      envFilePath: ['.env.development'],
     }),
-    MongooseModule.forRoot(appSettings.api.MONGO_URI),
+    MongooseModule.forRootAsync({
+      useFactory: (configService: ConfigService<Configuration, true>) => {
+        const environmentSettings = configService.get('environmentSettings', {
+          infer: true,
+        })
+        const databaseSettings = configService.get('databaseSettings', {
+          infer: true,
+        })
+
+        const uri = environmentSettings.isTesting ? databaseSettings.MONGO_TEST_URI : databaseSettings.MONGO_URI
+
+        return {
+          uri,
+        }
+      },
+      inject: [ConfigService],
+    }),
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Blog.name, schema: BlogSchema },
@@ -120,28 +139,35 @@ const testingProviders: Provider[] = [TestingService]
       { name: Session.name, schema: SessionSchema },
       { name: RequestLog.name, schema: RequestLogSchema },
     ]),
-    MailerModule.forRoot({
-      transport: {
-        service: 'gmail',
-        host: 'smtp.gmail.com',
-        port: 465,
-        ignoreTLS: true,
-        secure: true,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD,
-        },
+    MailerModule.forRootAsync({
+      useFactory: (configService: ConfigService<Configuration, true>) => {
+        const { EMAIL_USER, EMAIL_PASSWORD } = configService.get('emailSettings', { infer: true })
+
+        return {
+          transport: {
+            service: 'gmail',
+            host: 'smtp.gmail.com',
+            port: 465,
+            ignoreTLS: true,
+            secure: true,
+            auth: {
+              user: EMAIL_USER,
+              pass: EMAIL_PASSWORD,
+            },
+          },
+          defaults: {
+            from: `"Andrew" <${EMAIL_USER}>`,
+          },
+          template: {
+            dir: process.cwd() + '/src/features/emails/templates',
+            adapter: new EjsAdapter(),
+            options: {
+              strict: true,
+            },
+          },
+        }
       },
-      defaults: {
-        from: `"Andrew" <${process.env.EMAIL_USER}>`,
-      },
-      template: {
-        dir: process.cwd() + '/src/features/emails/templates',
-        adapter: new EjsAdapter(),
-        options: {
-          strict: true,
-        },
-      },
+      inject: [ConfigService],
     }),
   ],
   providers: [

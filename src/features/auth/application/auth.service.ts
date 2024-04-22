@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable } from '@nestjs/common'
 import { ObjectId } from 'mongodb'
 import { Request } from 'express'
 import { UsersQueryRepository } from '../../users/infrastructure/users.query-repository'
@@ -18,6 +18,8 @@ import { add } from 'date-fns'
 import { EmailsService } from '../../emails/application/emails.service'
 import { NewPasswordRecoveryInputModel } from '../api/models/input/auth.input.model'
 import { RefreshedSession } from '../../sessions/application/sessions.service'
+import { ConfigService } from '@nestjs/config'
+import { Configuration } from '../../../settings/configuration'
 
 export type TokenPair = {
   accessToken: string
@@ -36,14 +38,19 @@ export type JwtPayload = {
 
 @Injectable()
 export class AuthService {
+  private readonly jwtSecret: string
+
   constructor(
+    private readonly configService: ConfigService<Configuration, true>,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly emailsService: EmailsService,
     private readonly usersRepository: UsersRepository,
     private readonly usersQueryRepository: UsersQueryRepository,
     private readonly sessionsRepository: SessionsRepository,
-  ) {}
+  ) {
+    this.jwtSecret = this.getJwtSecret()
+  }
 
   async getMe(userId: string): Promise<InterlayerResult<MeOutputModel | null>> {
     const user = await this.usersQueryRepository.getMe(userId)
@@ -225,7 +232,7 @@ export class AuthService {
 
   verifyToken(token: string): JwtPayload | null {
     try {
-      return this.jwtService.verify<JwtPayload>(token, { secret: process.env.JWT_SECRET })
+      return this.jwtService.verify<JwtPayload>(token, { secret: this.jwtSecret })
     } catch (e) {
       return null
     }
@@ -257,14 +264,14 @@ export class AuthService {
 
   private signTokens(payload: any, deviceId?: string): TokenPair {
     const accessToken = this.jwtService.sign(payload, {
-      secret: process.env.JWT_SECRET,
+      secret: this.jwtSecret,
       expiresIn: 15 * 60 * 1000,
     })
 
     const refreshToken = this.jwtService.sign(
       { ...payload, deviceId: deviceId || uuidv4() },
       {
-        secret: process.env.JWT_SECRET,
+        secret: this.jwtSecret,
         expiresIn: 24 * 60 * 60 * 1000,
       },
     )
@@ -274,5 +281,11 @@ export class AuthService {
 
   private async _generateHash(password: string, salt: string): Promise<string> {
     return await bcrypt.hash(password, salt)
+  }
+
+  private getJwtSecret(): string {
+    return this.configService.get('jwtSettings.JWT_SECRET', {
+      infer: true,
+    })
   }
 }

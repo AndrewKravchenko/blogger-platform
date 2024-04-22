@@ -1,9 +1,13 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
 import { AuthService } from '../../features/auth/application/auth.service'
 import { Request } from 'express'
+import { Configuration } from '../../settings/configuration'
+import { ConfigService } from '@nestjs/config'
 
 @Injectable()
 export class BasicAuthGuard implements CanActivate {
+  constructor(private readonly configService: ConfigService<Configuration, true>) {}
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest()
     const auth = request.headers.authorization
@@ -21,7 +25,11 @@ export class BasicAuthGuard implements CanActivate {
     const decodedData = Buffer.from(token, 'base64').toString()
     const [login, password] = decodedData.split(':')
 
-    if (login !== process.env.AUTH_LOGIN || password !== process.env.AUTH_PASSWORD) {
+    const { AUTH_LOGIN, AUTH_PASSWORD } = this.configService.get('basicCredentials', {
+      infer: true,
+    })
+
+    if (login !== AUTH_LOGIN || password !== AUTH_PASSWORD) {
       throw new UnauthorizedException()
     }
 

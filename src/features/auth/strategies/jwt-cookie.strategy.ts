@@ -3,10 +3,19 @@ import { PassportStrategy } from '@nestjs/passport'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { Request } from 'express'
 import { AuthService } from '../application/auth.service'
+import { ConfigService } from '@nestjs/config'
+import { Configuration } from '../../../settings/configuration'
 
 @Injectable()
 export class JwtCookieStrategy extends PassportStrategy(Strategy, 'jwt-cookie') {
-  constructor(private readonly authService: AuthService) {
+  constructor(
+    private readonly authService: AuthService,
+    private readonly configService: ConfigService<Configuration, true>,
+  ) {
+    const secretOrKey = configService.get('jwtSettings.JWT_SECRET', {
+      infer: true,
+    })
+
     super({
       jwtFromRequest: (req: Request) => {
         if (req.cookies?.['refreshToken']) {
@@ -15,7 +24,7 @@ export class JwtCookieStrategy extends PassportStrategy(Strategy, 'jwt-cookie') 
         return null
       },
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET,
+      secretOrKey,
     })
   }
 

@@ -64,6 +64,7 @@ import { GetPostCommentsHandler } from './features/posts/application/use-cases/q
 import { BlogIsExistConstraint } from './infrastructure/decorators/validate/blog-is-exist'
 import configuration, { Configuration, validate } from './settings/configuration'
 import process from 'process'
+import { seconds, ThrottlerModule } from '@nestjs/throttler'
 
 const usersProviders: Provider[] = [
   UsersRepository,
@@ -107,6 +108,12 @@ const testingProviders: Provider[] = [TestingService]
 @Module({
   imports: [
     CqrsModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: seconds(60),
+        limit: 10,
+      },
+    ]),
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],

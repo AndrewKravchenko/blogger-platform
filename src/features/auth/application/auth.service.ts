@@ -15,11 +15,11 @@ import { SignUpUserInputModel } from '../api/models/input/create-auth.input.mode
 import { PasswordRecovery, User } from '../../users/domain/user.entity'
 import { UsersRepository } from '../../users/infrastructure/users.repository'
 import { add } from 'date-fns'
-import { EmailsService } from '../../emails/application/emails.service'
 import { NewPasswordRecoveryInputModel } from '../api/models/input/auth.input.model'
 import { RefreshedSession } from '../../sessions/application/sessions.service'
 import { ConfigService } from '@nestjs/config'
 import { Configuration } from '../../../settings/configuration'
+import { EmailsService } from '../../../infrastructure/emails/application/emails.service'
 
 export type TokenPair = {
   accessToken: string

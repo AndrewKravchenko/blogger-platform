@@ -38,7 +38,6 @@ import { RequestLogsRepository } from './features/requests/infrastructure/reques
 import { JwtStrategy } from './features/auth/strategies/jwt.strategy'
 import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter'
 import { MailerModule } from '@nestjs-modules/mailer'
-import { EmailsService } from './features/emails/application/emails.service'
 import { JwtCookieStrategy } from './features/auth/strategies/jwt-cookie.strategy'
 import { CommentsRepository } from './features/comments/infrastructure/comments.repository'
 import { LikesRepository } from './features/likes/infrastructure/likes.repository'
@@ -65,6 +64,7 @@ import { BlogIsExistConstraint } from './infrastructure/decorators/validate/blog
 import configuration, { Configuration, validate } from './settings/configuration'
 import process from 'process'
 import { seconds, ThrottlerModule } from '@nestjs/throttler'
+import { EmailModule } from './infrastructure/emails/email.module'
 
 const usersProviders: Provider[] = [
   UsersRepository,
@@ -102,7 +102,6 @@ const commentsProviders: Provider[] = [
   DeleteCommentHandler,
 ]
 const requestLogsProviders: Provider[] = [RequestLogsRepository]
-const emailsProviders: Provider[] = [EmailsService]
 const testingProviders: Provider[] = [TestingService]
 
 @Module({
@@ -176,6 +175,7 @@ const testingProviders: Provider[] = [TestingService]
       },
       inject: [ConfigService],
     }),
+    EmailModule,
   ],
   providers: [
     ...usersProviders,
@@ -186,7 +186,6 @@ const testingProviders: Provider[] = [TestingService]
     ...commentsProviders,
     ...sessionsProviders,
     ...requestLogsProviders,
-    ...emailsProviders,
     ...testingProviders,
     BlogIsExistConstraint,
   ],

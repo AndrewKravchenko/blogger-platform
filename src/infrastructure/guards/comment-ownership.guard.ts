@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { Request } from 'express'
-import { CommentsQueryRepository } from '../../features/comments/infrastructure/comments.query-repository'
+import { CommentsQueryRepository } from '../../features/blogs/comments/infrastructure/comments.query-repository'
 
 @Injectable()
 export class CommentOwnershipGuard implements CanActivate {

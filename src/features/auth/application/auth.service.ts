@@ -41,13 +41,13 @@ export class AuthService {
   private readonly jwtSecret: string
 
   constructor(
-    private readonly configService: ConfigService<Configuration, true>,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly emailsService: EmailsService,
     private readonly usersRepository: UsersRepository,
     private readonly usersQueryRepository: UsersQueryRepository,
     private readonly sessionsRepository: SessionsRepository,
+    private readonly configService: ConfigService<Configuration, true>,
   ) {
     this.jwtSecret = this.getJwtSecret()
   }

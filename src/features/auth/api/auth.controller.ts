@@ -1,29 +1,29 @@
 import { Body, Controller, Get, Headers, HttpCode, HttpStatus, Ip, Post, Res, UseGuards } from '@nestjs/common'
-import { LocalAuthGuard } from '../guards/local-auth.guard'
 import UAParser from 'ua-parser-js'
 import { AuthService } from '../application/auth.service'
 import { handleInterlayerResult, throwExceptionByInterlayerResultCode } from '../../../common/models/result-layer.model'
-import { JwtAuthGuard } from '../guards/jwt-auth.guard'
 import { CurrentUserId } from '../decorators/current-user-id.param.decorator'
-import { JwtCookieAuthGuard } from '../guards/jwt-cookie-auth.guard'
 import { CurrentUser } from '../decorators/current-user.param.decorator'
 import { ConfirmEmailInputModel, NewPasswordRecoveryInputModel, UserPayload } from './models/input/auth.input.model'
 import { SignUpUserInputModel } from './models/input/create-auth.input.model'
 import { MeOutputModel } from '../../users/api/models/output/user.output.model'
 import { EmailPipe } from '../../../infrastructure/pipes/email.pipe'
+import { AccessTokenAuthGuard } from '../guards/access-token-auth.guard'
+import { LoginAuthGuard } from '../guards/login-auth.guard'
+import { RefreshTokenAuthGuard } from '../guards/refresh-token-auth.guard'
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AccessTokenAuthGuard)
   @Get('me')
   async getMe(@CurrentUserId() currentUserId: string): Promise<MeOutputModel | void> {
     const result = await this.authService.getMe(currentUserId)
     return handleInterlayerResult(result)
   }
 
-  @UseGuards(LocalAuthGuard)
+  @UseGuards(LoginAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -79,9 +79,9 @@ export class AuthController {
     return handleInterlayerResult(result)
   }
 
-  @UseGuards(JwtCookieAuthGuard)
+  @UseGuards(RefreshTokenAuthGuard)
   @Post('refresh-token')
-  @HttpCode(HttpStatus.NO_CONTENT)
+  @HttpCode(HttpStatus.OK)
   async refreshAccessToken(
     @Ip() ip: string,
     @CurrentUser() { userId, deviceId }: UserPayload,
@@ -97,7 +97,7 @@ export class AuthController {
     return { accessToken: result.data.accessToken }
   }
 
-  @UseGuards(JwtCookieAuthGuard)
+  @UseGuards(RefreshTokenAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@CurrentUser() { deviceId }: UserPayload, @Res({ passthrough: true }) res): Promise<void> {

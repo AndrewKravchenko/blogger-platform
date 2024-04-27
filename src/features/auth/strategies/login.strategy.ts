@@ -5,7 +5,7 @@ import { AuthService } from '../application/auth.service'
 import { FullUserOutputModel } from '../../users/api/models/output/user.output.model'
 
 @Injectable()
-export class LocalStrategy extends PassportStrategy(Strategy) {
+export class LoginStrategy extends PassportStrategy(Strategy, 'login') {
   constructor(private readonly authService: AuthService) {
     super({ usernameField: 'loginOrEmail' })
   }

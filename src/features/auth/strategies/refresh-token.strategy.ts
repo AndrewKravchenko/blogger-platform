@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config'
 import { Configuration } from '../../../settings/configuration'
 
 @Injectable()
-export class JwtCookieStrategy extends PassportStrategy(Strategy, 'jwt-cookie') {
+export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'refresh-token') {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService<Configuration, true>,

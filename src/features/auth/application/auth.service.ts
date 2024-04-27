@@ -38,8 +38,6 @@ export type JwtPayload = {
 
 @Injectable()
 export class AuthService {
-  private readonly jwtSecret: string
-
   constructor(
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
@@ -48,9 +46,7 @@ export class AuthService {
     private readonly usersQueryRepository: UsersQueryRepository,
     private readonly sessionsRepository: SessionsRepository,
     private readonly configService: ConfigService<Configuration, true>,
-  ) {
-    this.jwtSecret = this.getJwtSecret()
-  }
+  ) {}
 
   async getMe(userId: string): Promise<InterlayerResult<MeOutputModel | null>> {
     const user = await this.usersQueryRepository.getMe(userId)
@@ -231,8 +227,12 @@ export class AuthService {
   }
 
   verifyToken(token: string): JwtPayload | null {
+    const secret = this.configService.get('jwtSettings.JWT_SECRET', {
+      infer: true,
+    })
+
     try {
-      return this.jwtService.verify<JwtPayload>(token, { secret: this.jwtSecret })
+      return this.jwtService.verify<JwtPayload>(token, { secret })
     } catch (e) {
       return null
     }
@@ -263,16 +263,20 @@ export class AuthService {
   }
 
   private signTokens(payload: any, deviceId?: string): TokenPair {
+    const { ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY, JWT_SECRET } = this.configService.get('jwtSettings', {
+      infer: true,
+    })
+
     const accessToken = this.jwtService.sign(payload, {
-      secret: this.jwtSecret,
-      expiresIn: 15 * 60 * 1000,
+      secret: JWT_SECRET,
+      expiresIn: ACCESS_TOKEN_EXPIRY,
     })
 
     const refreshToken = this.jwtService.sign(
       { ...payload, deviceId: deviceId || uuidv4() },
       {
-        secret: this.jwtSecret,
-        expiresIn: 24 * 60 * 60 * 1000,
+        secret: JWT_SECRET,
+        expiresIn: REFRESH_TOKEN_EXPIRY,
       },
     )
 
@@ -281,11 +285,5 @@ export class AuthService {
 
   private async _generateHash(password: string, salt: string): Promise<string> {
     return await bcrypt.hash(password, salt)
-  }
-
-  private getJwtSecret(): string {
-    return this.configService.get('jwtSettings.JWT_SECRET', {
-      infer: true,
-    })
   }
 }

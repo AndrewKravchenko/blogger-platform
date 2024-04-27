@@ -28,6 +28,12 @@ export class JwtSettings {
   constructor(private environmentVariables: EnvironmentVariables) {}
   @IsString()
   JWT_SECRET: string = this.environmentVariables.JWT_SECRET
+
+  @IsNumber()
+  ACCESS_TOKEN_EXPIRY: number = +this.environmentVariables.ACCESS_TOKEN_EXPIRY
+
+  @IsNumber()
+  REFRESH_TOKEN_EXPIRY: number = +this.environmentVariables.REFRESH_TOKEN_EXPIRY
 }
 
 export class EmailSettings {

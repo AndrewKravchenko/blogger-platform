@@ -3,7 +3,7 @@ import { SessionOutputModel } from './models/output/session.output.model'
 import { SessionsService } from '../application/sessions.service'
 import { InputDeviceIdModel } from './models/input/session.input.model'
 import { handleInterlayerResult } from '../../../common/models/result-layer.model'
-import { JwtCookieAuthGuard } from '../../auth/guards/jwt-cookie-auth.guard'
+import { RefreshTokenAuthGuard } from '../../auth/guards/refresh-token-auth.guard'
 import { CurrentUserId } from '../../auth/decorators/current-user-id.param.decorator'
 import { CurrentUser } from '../../auth/decorators/current-user.param.decorator'
 import { UserPayload } from '../../auth/api/models/input/auth.input.model'
@@ -12,13 +12,13 @@ import { UserPayload } from '../../auth/api/models/input/auth.input.model'
 export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
-  @UseGuards(JwtCookieAuthGuard)
+  @UseGuards(RefreshTokenAuthGuard)
   @Get('devices')
   async getSessions(@CurrentUserId() currentUserId: string): Promise<SessionOutputModel[]> {
     return await this.sessionsService.getSessions(currentUserId)
   }
 
-  @UseGuards(JwtCookieAuthGuard)
+  @UseGuards(RefreshTokenAuthGuard)
   @Delete('devices/:deviceId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteSessionByDeviceId(
@@ -29,7 +29,7 @@ export class SessionsController {
     return handleInterlayerResult(result)
   }
 
-  @UseGuards(JwtCookieAuthGuard)
+  @UseGuards(RefreshTokenAuthGuard)
   @Delete('devices')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteSessions(@CurrentUser() { userId, deviceId }: UserPayload): Promise<void> {

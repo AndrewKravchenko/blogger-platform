@@ -5,14 +5,14 @@ import { UsersModule } from '../users/users.module'
 import { JwtService } from '@nestjs/jwt'
 import { EmailModule } from '../../infrastructure/emails/email.module'
 import { SessionsModule } from '../sessions/sessions.module'
-import { JwtCookieStrategy } from './strategies/jwt-cookie.strategy'
-import { JwtStrategy } from './strategies/jwt.strategy'
-import { LocalStrategy } from './strategies/local.strategy'
+import { LoginStrategy } from './strategies/login.strategy'
+import { AccessTokenStrategy } from './strategies/access-token.strategy'
+import { RefreshTokenStrategy } from './strategies/refresh-token.strategy'
 
 @Module({
   imports: [SessionsModule, UsersModule, EmailModule],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, JwtCookieStrategy, JwtService],
+  providers: [AuthService, LoginStrategy, AccessTokenStrategy, RefreshTokenStrategy, JwtService],
   exports: [AuthService],
 })
 export class AuthModule {}

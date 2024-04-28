@@ -13,7 +13,7 @@ import { DecodeUserIdMiddleware } from './infrastructure/middlewares/user-id .mi
 import { CqrsModule } from '@nestjs/cqrs'
 import configuration, { Configuration, validate } from './settings/configuration'
 import process from 'process'
-import { seconds, ThrottlerModule } from '@nestjs/throttler'
+import { seconds, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler'
 import { EmailModule } from './infrastructure/emails/email.module'
 import { UsersModule } from './features/users/users.module'
 import { AuthModule } from './features/auth/auth.module'
@@ -23,6 +23,7 @@ import { Post, PostSchema } from './features/blogs/posts/domain/post.entity'
 import { Comment, CommentSchema } from './features/blogs/comments/domain/comment.entity'
 import { BlogsModule } from './features/blogs/blogs.module'
 import { TestingModule } from './features/testing/testing.module'
+import { APP_GUARD } from '@nestjs/core'
 
 const requestLogsProviders: Provider[] = [RequestLogsRepository]
 
@@ -104,7 +105,13 @@ const requestLogsProviders: Provider[] = [RequestLogsRepository]
     BlogsModule,
     TestingModule,
   ],
-  providers: [...requestLogsProviders],
+  providers: [
+    ...requestLogsProviders,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

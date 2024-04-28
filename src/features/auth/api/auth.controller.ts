@@ -11,6 +11,7 @@ import { EmailPipe } from '../../../infrastructure/pipes/email.pipe'
 import { AccessTokenAuthGuard } from '../guards/access-token-auth.guard'
 import { LoginAuthGuard } from '../guards/login-auth.guard'
 import { RefreshTokenAuthGuard } from '../guards/refresh-token-auth.guard'
+import { seconds, Throttle } from '@nestjs/throttler'
 
 @Controller('auth')
 export class AuthController {
@@ -23,6 +24,7 @@ export class AuthController {
     return handleInterlayerResult(result)
   }
 
+  @Throttle({ default: { limit: 5, ttl: seconds(10) } })
   @UseGuards(LoginAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -44,6 +46,7 @@ export class AuthController {
     return { accessToken: result.data.accessToken }
   }
 
+  @Throttle({ default: { limit: 5, ttl: seconds(10) } })
   @Post('registration')
   @HttpCode(HttpStatus.NO_CONTENT)
   async signUp(@Body() userInputModel: SignUpUserInputModel): Promise<{ accessToken: string } | void> {
@@ -51,6 +54,7 @@ export class AuthController {
     return handleInterlayerResult(result)
   }
 
+  @Throttle({ default: { limit: 5, ttl: seconds(10) } })
   @Post('registration-confirmation')
   @HttpCode(HttpStatus.NO_CONTENT)
   async confirmEmail(@Body() { code: confirmCode }: ConfirmEmailInputModel): Promise<void> {
@@ -58,6 +62,7 @@ export class AuthController {
     return handleInterlayerResult(result)
   }
 
+  @Throttle({ default: { limit: 5, ttl: seconds(10) } })
   @Post('registration-email-resending')
   @HttpCode(HttpStatus.NO_CONTENT)
   async resendRegistrationEmail(@Body('email', EmailPipe) email: string): Promise<void> {
@@ -65,6 +70,7 @@ export class AuthController {
     return handleInterlayerResult(result)
   }
 
+  @Throttle({ default: { limit: 5, ttl: seconds(10) } })
   @Post('password-recovery')
   @HttpCode(HttpStatus.NO_CONTENT)
   async resetPassword(@Body('email', EmailPipe) email: string): Promise<void> {
@@ -72,6 +78,7 @@ export class AuthController {
     return handleInterlayerResult(result)
   }
 
+  @Throttle({ default: { limit: 5, ttl: seconds(10) } })
   @Post('new-password')
   @HttpCode(HttpStatus.NO_CONTENT)
   async changeUserPassword(@Body() newPasswordRecovery: NewPasswordRecoveryInputModel): Promise<void> {

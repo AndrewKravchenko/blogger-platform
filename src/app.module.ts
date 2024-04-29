@@ -1,12 +1,10 @@
-import { MiddlewareConsumer, Module, NestModule, Provider } from '@nestjs/common'
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
 import { MongooseModule } from '@nestjs/mongoose'
 import { User, UserSchema } from './features/users/domain/user.entity'
 import { LoggerMiddleware } from './infrastructure/middlewares/logger.middleware'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { Like, LikeSchema } from './features/blogs/likes/domain/like.entity'
 import { Session, SessionSchema } from './features/sessions/domain/session.entity'
-import { RequestLog, RequestLogSchema } from './features/requests/domain/request-log.entity'
-import { RequestLogsRepository } from './features/requests/infrastructure/request-logs.repository'
 import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter'
 import { MailerModule } from '@nestjs-modules/mailer'
 import { DecodeUserIdMiddleware } from './infrastructure/middlewares/user-id .middleware'
@@ -24,8 +22,6 @@ import { Comment, CommentSchema } from './features/blogs/comments/domain/comment
 import { BlogsModule } from './features/blogs/blogs.module'
 import { TestingModule } from './features/testing/testing.module'
 import { APP_GUARD } from '@nestjs/core'
-
-const requestLogsProviders: Provider[] = [RequestLogsRepository]
 
 @Module({
   imports: [
@@ -66,7 +62,6 @@ const requestLogsProviders: Provider[] = [RequestLogsRepository]
       { name: Like.name, schema: LikeSchema },
       { name: Comment.name, schema: CommentSchema },
       { name: Session.name, schema: SessionSchema },
-      { name: RequestLog.name, schema: RequestLogSchema },
     ]),
     MailerModule.forRootAsync({
       useFactory: (configService: ConfigService<Configuration, true>) => {
@@ -106,7 +101,6 @@ const requestLogsProviders: Provider[] = [RequestLogsRepository]
     TestingModule,
   ],
   providers: [
-    ...requestLogsProviders,
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

@@ -6,6 +6,8 @@ import { Blog } from '../../blogs/blogs/domain/blog.entity'
 import { Comment } from '../../blogs/comments/domain/comment.entity'
 import { Post } from '../../blogs/posts/domain/post.entity'
 import { Like } from '../../blogs/likes/domain/like.entity'
+import { InjectDataSource } from '@nestjs/typeorm'
+import { DataSource } from 'typeorm'
 
 @Injectable()
 export class TestingService {
@@ -15,6 +17,7 @@ export class TestingService {
     @InjectModel(User.name) private usersModel: Model<User>,
     @InjectModel(Comment.name) private commentsModel: Model<Comment>,
     @InjectModel(Like.name) private likesModel: Model<Like>,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   async dropDatabase() {
@@ -23,5 +26,7 @@ export class TestingService {
     await this.usersModel.deleteMany({})
     await this.commentsModel.deleteMany({})
     await this.likesModel.deleteMany({})
+    await this.dataSource.query('DELETE FROM "Session"')
+    await this.dataSource.query('DELETE FROM "User" CASCADE')
   }
 }

@@ -1,25 +1,25 @@
 import { Injectable } from '@nestjs/common'
 import { ObjectId } from 'mongodb'
 import { Request } from 'express'
-import { UsersQueryRepository } from '../../users/infrastructure/users.query-repository'
 import bcrypt from 'bcrypt'
-import { SessionsRepository } from '../../sessions/infrastructure/sessions.repository'
 import { JwtService } from '@nestjs/jwt'
 import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
 import { v4 as uuidv4 } from 'uuid'
-import { convertUnixTimestampToISO } from '../../../infrastructure/utils/common'
-import { Session } from '../../sessions/domain/session.entity'
+import { Session } from '../../sessions/domain/session.sql-entity'
 import { MeOutputModel } from '../../users/api/models/output/user.output.model'
 import { UsersService } from '../../users/application/users.service'
 import { SignUpUserInputModel } from '../api/models/input/create-auth.input.model'
-import { PasswordRecovery, User } from '../../users/domain/user.entity'
-import { UsersRepository } from '../../users/infrastructure/users.repository'
 import { add } from 'date-fns'
 import { NewPasswordRecoveryInputModel } from '../api/models/input/auth.input.model'
 import { RefreshedSession } from '../../sessions/application/sessions.service'
 import { ConfigService } from '@nestjs/config'
 import { Configuration } from '../../../settings/configuration'
 import { EmailsService } from '../../../infrastructure/emails/application/emails.service'
+import { UsersSqlRepository } from '../../users/infrastructure/users.sql-repository'
+import { UsersSqlQueryRepository } from '../../users/infrastructure/users.sql-query-repository'
+import { SessionsSqlRepository } from '../../sessions/infrastructure/sessions.sql-repository'
+import { SessionOutputModel } from '../../sessions/api/models/output/session.output.model'
+import { User } from '../../users/domain/user.sql-entity'
 
 export type TokenPair = {
   accessToken: string
@@ -42,14 +42,14 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly emailsService: EmailsService,
-    private readonly usersRepository: UsersRepository,
-    private readonly usersQueryRepository: UsersQueryRepository,
-    private readonly sessionsRepository: SessionsRepository,
     private readonly configService: ConfigService<Configuration, true>,
+    private readonly usersSqlRepository: UsersSqlRepository,
+    private readonly sessionsSqlRepository: SessionsSqlRepository,
+    private readonly usersSqlQueryRepository: UsersSqlQueryRepository,
   ) {}
 
   async getMe(userId: string): Promise<InterlayerResult<MeOutputModel | null>> {
-    const user = await this.usersQueryRepository.getMe(userId)
+    const user = await this.usersSqlQueryRepository.getMe(userId)
     if (user) {
       return InterlayerResult.Ok(user)
     } else {
@@ -59,56 +59,51 @@ export class AuthService {
 
   async signUp(userInputModel: SignUpUserInputModel): Promise<InterlayerResult> {
     const { login, password, email } = userInputModel
-    const existingUser = await this.usersQueryRepository.getUserByLoginOrEmail(login, email)
+    const existingUser = await this.usersSqlQueryRepository.getUserByLoginOrEmail(login, email)
 
     if (existingUser) {
       const incorrectField = existingUser.login === login ? 'login' : 'email'
 
       return InterlayerResult.Error(
         InterlayerResultCode.BadRequest,
-        `Incorrect ${incorrectField}!`,
         `${incorrectField}`,
+        `Incorrect ${incorrectField}!`,
       )
     }
 
-    const confirmationCode = uuidv4()
     const { passwordSalt, passwordHash } = await this.usersService.generatePasswordHash(password)
 
+    const confirmationCode = uuidv4()
+    const expirationDate = add(new Date(), { hours: 1, minutes: 1 })
     const newUser = new User({
       login,
       email,
       password: passwordHash,
       passwordSalt,
       isDeleted: false,
-      emailConfirmation: {
-        isConfirmed: false,
-        confirmationCode,
-        expirationDate: add(new Date(), {
-          hours: 1,
-          minutes: 1,
-        }),
-      },
+      isConfirmed: false,
     })
 
-    await this.usersRepository.create(newUser)
+    const createdUser = await this.usersSqlRepository.create(newUser)
+    await this.usersSqlRepository.createEmailConfirmation(createdUser.id, confirmationCode, expirationDate)
     await this.emailsService.sendRegistrationConfirmationEmail(email, confirmationCode)
 
     return InterlayerResult.Ok()
   }
 
   async confirmEmail(code: string): Promise<InterlayerResult> {
-    const user = await this.usersRepository.getUserByConfirmationCode(code)
-    const incorrectCodeError = InterlayerResult.Error(InterlayerResultCode.BadRequest, 'Incorrect code!', 'code')
+    const emailConfirmation = await this.usersSqlRepository.getEmailConfirmation(code)
+    const incorrectCodeError = InterlayerResult.Error(InterlayerResultCode.BadRequest, 'code', 'Incorrect code!')
 
-    if (!user?.emailConfirmation) {
+    if (!emailConfirmation || emailConfirmation.isConfirmed) {
       return incorrectCodeError
     }
 
-    const isCorrectCode = user.emailConfirmation.confirmationCode === code
-    const isExpired = user.emailConfirmation.expirationDate < new Date()
+    const isCorrectCode = emailConfirmation.confirmationCode === code
+    const isExpired = emailConfirmation.expirationDate < new Date()
 
     if (isCorrectCode && !isExpired) {
-      await this.usersRepository.markEmailConfirmed(user.id)
+      await this.usersSqlRepository.markEmailConfirmed(emailConfirmation.userId)
       return InterlayerResult.Ok()
     }
 
@@ -116,22 +111,22 @@ export class AuthService {
   }
 
   async resendRegistrationEmail(email: string): Promise<InterlayerResult> {
-    const user = await this.usersQueryRepository.getUserByLoginOrEmail(email)
+    const user = await this.usersSqlRepository.getUserByLoginOrEmail(email)
 
-    if (!user?.emailConfirmation) {
-      return InterlayerResult.Error(InterlayerResultCode.BadRequest, 'Incorrect email!', 'email')
+    if (!user || user.isConfirmed) {
+      return InterlayerResult.Error(InterlayerResultCode.BadRequest, 'email', 'Incorrect email!')
     }
 
     const confirmationCode = uuidv4()
 
-    await this.usersRepository.changeEmailConfirmationCode(user.id, confirmationCode)
+    await this.usersSqlRepository.changeEmailConfirmationCode(user.id, confirmationCode)
     await this.emailsService.sendRegistrationConfirmationEmail(email, confirmationCode)
 
     return InterlayerResult.Ok()
   }
 
   async resetPassword(email: string): Promise<InterlayerResult> {
-    const user = await this.usersQueryRepository.getUserByLoginOrEmail(email)
+    const user = await this.usersSqlRepository.getUserByLoginOrEmail(email)
 
     if (!user) {
       return InterlayerResult.Ok()
@@ -139,38 +134,40 @@ export class AuthService {
 
     const code = uuidv4()
     const expirationDate = add(new Date(), { hours: 1, minutes: 1 })
-    const passwordRecovery = new PasswordRecovery(code, expirationDate)
+    const hasPasswordRecoveryTable = await this.usersSqlRepository.getPasswordRecoveryById(user.id)
 
-    await this.usersRepository.createRecoveryCode(user.id, passwordRecovery)
+    hasPasswordRecoveryTable
+      ? await this.usersSqlRepository.updateRecoveryCode(user.id, code, expirationDate)
+      : await this.usersSqlRepository.createPasswordRecovery(user.id, code, expirationDate)
+
     await this.emailsService.sendPasswordRecoveryEmail(email, code)
 
     return InterlayerResult.Ok()
   }
 
   async changePassword({ newPassword, recoveryCode }: NewPasswordRecoveryInputModel): Promise<InterlayerResult> {
-    const user = await this.usersRepository.getUserByPasswordRecoveryCode(recoveryCode)
+    const passwordRecovery = await this.usersSqlRepository.getPasswordRecoveryByCode(recoveryCode)
 
-    if (!user?.passwordRecovery) {
+    if (!passwordRecovery) {
       return InterlayerResult.Error(InterlayerResultCode.BadRequest)
     }
 
-    const isExpired = user.passwordRecovery.expirationDate < new Date()
-
+    const isExpired = passwordRecovery.expirationDate < new Date()
     if (isExpired) {
       return InterlayerResult.Error(InterlayerResultCode.BadRequest)
     }
 
     const passwordData = await this.usersService.generatePasswordHash(newPassword)
-    await this.usersRepository.changePassword(user.id, passwordData)
+    await this.usersSqlRepository.changePassword(passwordRecovery.userId, passwordData)
 
     return InterlayerResult.Ok()
   }
 
   async login(userId: string, ip = '', deviceName = ''): Promise<InterlayerResult<TokenPair>> {
-    const sessionsCount = await this.sessionsRepository.getUserSessionsCount(userId)
+    const sessionsCount = await this.sessionsSqlRepository.getUserSessionsCount(userId)
 
     if (sessionsCount > 5) {
-      await this.sessionsRepository.deleteOldestSession(userId)
+      await this.sessionsSqlRepository.deleteOldestSession(userId)
     }
 
     const payload = { userId }
@@ -182,12 +179,11 @@ export class AuthService {
       deviceId,
       userId,
       deviceName,
-      lastActiveDate: convertUnixTimestampToISO(iat),
-      expirationAt: convertUnixTimestampToISO(exp),
+      lastActiveDate: new Date(iat * 1000),
+      expirationAt: new Date(exp * 1000),
     })
 
-    await this.sessionsRepository.createSession(newSession)
-
+    await this.sessionsSqlRepository.createSession(newSession)
     return InterlayerResult.Ok({ accessToken, refreshToken })
   }
 
@@ -198,20 +194,20 @@ export class AuthService {
 
     const refreshedSession: RefreshedSession = {
       ip,
-      expirationAt: convertUnixTimestampToISO(exp),
-      lastActiveDate: convertUnixTimestampToISO(iat),
+      lastActiveDate: new Date(iat * 1000),
+      expirationAt: new Date(exp * 1000),
     }
-    await this.sessionsRepository.refreshSession(userId, deviceId, refreshedSession)
+    await this.sessionsSqlRepository.refreshSession(userId, deviceId, refreshedSession)
 
     return InterlayerResult.Ok({ accessToken, refreshToken })
   }
 
   async logout(deviceId: string): Promise<void> {
-    await this.sessionsRepository.deleteSessionByDeviceId(deviceId)
+    await this.sessionsSqlRepository.deleteSessionByDeviceId(deviceId)
   }
 
   async validateUser(loginOrEmail: string, password: string) {
-    const user = await this.usersQueryRepository.getUserByLoginOrEmail(loginOrEmail)
+    const user = await this.usersSqlRepository.getUserByLoginOrEmail(loginOrEmail)
 
     if (!user) {
       return null
@@ -255,11 +251,8 @@ export class AuthService {
     return null
   }
 
-  async isActiveSession(userId: string, deviceId: string, iat: number): Promise<boolean> {
-    const lastActiveDate = convertUnixTimestampToISO(iat)
-    const session = await this.sessionsRepository.getSession(userId, deviceId)
-
-    return lastActiveDate === session?.lastActiveDate
+  async getSession(userId: string, deviceId: string): Promise<SessionOutputModel | null> {
+    return await this.sessionsSqlRepository.getSession(userId, deviceId)
   }
 
   private signTokens(payload: any, deviceId?: string): TokenPair {

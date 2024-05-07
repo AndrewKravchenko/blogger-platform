@@ -19,13 +19,13 @@ export class Session {
   deviceName: string
 
   @Prop({ required: true })
-  lastActiveDate: string
+  lastActiveDate: Date
 
   @Prop({ required: true })
-  expirationAt: string
+  expirationAt: Date
 
   @Prop({ required: true, default: getCurrentDateISOString })
-  createdAt?: string
+  createdAt?: Date
 
   constructor({ ip, userId, deviceId, deviceName, lastActiveDate, expirationAt }: Session) {
     this.ip = ip

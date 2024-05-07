@@ -22,6 +22,7 @@ import { Comment, CommentSchema } from './features/blogs/comments/domain/comment
 import { BlogsModule } from './features/blogs/blogs.module'
 import { TestingModule } from './features/testing/testing.module'
 import { APP_GUARD } from '@nestjs/core'
+import { TypeOrmModule } from '@nestjs/typeorm'
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { APP_GUARD } from '@nestjs/core'
     ThrottlerModule.forRoot([
       {
         ttl: seconds(60),
-        limit: 10,
+        limit: 1000,
       },
     ]),
     ConfigModule.forRoot({
@@ -37,6 +38,24 @@ import { APP_GUARD } from '@nestjs/core'
       load: [configuration],
       validate,
       envFilePath: ['.env.development'],
+    }),
+    TypeOrmModule.forRootAsync({
+      useFactory: (configService: ConfigService<Configuration, true>) => {
+        const { SQL_USER_NAME, SQL_PASSWORD, SQL_DATABASE_NAME } = configService.get('sqlDatabaseSettings', {
+          infer: true,
+        })
+
+        return {
+          type: 'postgres',
+          host: 'localhost',
+          port: 5432,
+          username: SQL_USER_NAME,
+          password: SQL_PASSWORD,
+          database: SQL_DATABASE_NAME,
+          synchronize: false,
+        }
+      },
+      inject: [ConfigService],
     }),
     MongooseModule.forRootAsync({
       useFactory: (configService: ConfigService<Configuration, true>) => {

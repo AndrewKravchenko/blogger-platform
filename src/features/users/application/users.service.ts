@@ -1,11 +1,11 @@
 import bcrypt from 'bcrypt'
 import { Injectable } from '@nestjs/common'
-import { UsersRepository } from '../infrastructure/users.repository'
 import { CreateUserInputModel } from '../api/models/input/create-user-input.model'
 import { User } from '../domain/user.entity'
-import { UsersQueryRepository } from '../infrastructure/users.query-repository'
 import { FullUserOutputModel, UserOutputModel } from '../api/models/output/user.output.model'
 import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
+import { UsersSqlRepository } from '../infrastructure/users.sql-repository'
+import { UsersSqlQueryRepository } from '../infrastructure/users.sql-query-repository'
 
 export type PasswordHashResult = {
   passwordSalt: string
@@ -15,12 +15,12 @@ export type PasswordHashResult = {
 @Injectable()
 export class UsersService {
   constructor(
-    private readonly usersRepository: UsersRepository,
-    private readonly usersQueryRepository: UsersQueryRepository,
+    private readonly usersSqlRepository: UsersSqlRepository,
+    private readonly usersSqlQueryRepository: UsersSqlQueryRepository,
   ) {}
 
   async validateUser(loginOrEmail: string, password: string): Promise<Nullable<FullUserOutputModel>> {
-    const user = await this.usersQueryRepository.getUserByLoginOrEmail(loginOrEmail)
+    const user = await this.usersSqlQueryRepository.getUserByLoginOrEmail(loginOrEmail)
 
     if (!user) {
       return null
@@ -37,15 +37,15 @@ export class UsersService {
 
   async create(userInputModel: CreateUserInputModel): Promise<InterlayerResult<Nullable<UserOutputModel>>> {
     const { login, password, email } = userInputModel
-    const existingUser = await this.usersQueryRepository.getUserByLoginOrEmail(login, email)
+    const existingUser = await this.usersSqlQueryRepository.getUserByLoginOrEmail(login, email)
 
     if (existingUser) {
       const incorrectField = existingUser.login === login ? 'login' : 'email'
 
       return InterlayerResult.Error(
         InterlayerResultCode.BadRequest,
-        `Incorrect ${incorrectField}!`,
         `${incorrectField}`,
+        `Incorrect ${incorrectField}!`,
       )
     }
 
@@ -55,16 +55,16 @@ export class UsersService {
       email,
       password: passwordHash,
       passwordSalt,
+      isConfirmed: true,
       isDeleted: false,
     })
 
-    const createdUser = await this.usersRepository.create(newUser)
-
+    const createdUser = await this.usersSqlRepository.create(newUser)
     return InterlayerResult.Ok(createdUser)
   }
 
   async deleteById(userId: string): Promise<InterlayerResult> {
-    const isDeleted = await this.usersRepository.deleteById(userId)
+    const isDeleted = await this.usersSqlRepository.deleteById(userId)
 
     if (isDeleted) {
       return InterlayerResult.Ok()

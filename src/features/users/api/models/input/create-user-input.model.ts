@@ -23,6 +23,7 @@ export class CreateUserModel {
   email: string
   passwordSalt: string
   isDeleted: boolean
+  isConfirmed: boolean
   passwordRecovery?: PasswordRecovery
   emailConfirmation?: EmailConfirmation
 }

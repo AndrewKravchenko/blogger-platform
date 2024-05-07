@@ -13,7 +13,7 @@ export class LoginStrategy extends PassportStrategy(Strategy, 'login') {
   async validate(loginOrEmail: string, password: string): Promise<FullUserOutputModel> {
     const user = await this.authService.validateUser(loginOrEmail, password)
 
-    if (!user || user.isDeleted || user.emailConfirmation) {
+    if (!user || user.isDeleted || !user.isConfirmed) {
       throw new UnauthorizedException()
     }
 

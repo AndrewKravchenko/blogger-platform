@@ -1,32 +1,29 @@
-import { SessionDocument } from '../../../domain/session.entity'
+import { Session } from '../../../domain/session.sql-entity'
 
 type FullSessionInput = {
-  id: string
   ip: string
   userId: string
   deviceId: string
   title: string
-  expirationAt: string
-  lastActiveDate: string
+  expirationAt: Date
+  lastActiveDate: Date
 }
 export class SessionOutputModel {
   constructor(
     public ip: string,
     public deviceId: string,
     public title: string,
-    public lastActiveDate: string,
+    public lastActiveDate: Date,
   ) {}
 }
 
 export class FullSessionOutputModel extends SessionOutputModel {
-  public id: string
   public userId: string
-  public expirationAt: string
+  public expirationAt: Date
 
-  constructor({ id, ip, userId, deviceId, title, expirationAt, lastActiveDate }: FullSessionInput) {
+  constructor({ ip, userId, deviceId, title, expirationAt, lastActiveDate }: FullSessionInput) {
     super(ip, deviceId, title, lastActiveDate)
 
-    this.id = id
     this.userId = userId
     this.expirationAt = expirationAt
   }
@@ -34,26 +31,19 @@ export class FullSessionOutputModel extends SessionOutputModel {
 
 // MAPPERS
 
-export const SessionOutputMapper = ({
-  ip,
-  deviceId,
-  deviceName,
-  lastActiveDate,
-}: SessionDocument): SessionOutputModel => {
+export const SessionOutputMapper = ({ ip, deviceId, deviceName, lastActiveDate }: Session): SessionOutputModel => {
   return new SessionOutputModel(ip, deviceId, deviceName, lastActiveDate)
 }
 
 export const FullSessionOutputMapper = ({
-  id,
   ip,
   userId,
   deviceId,
   deviceName,
   expirationAt,
   lastActiveDate,
-}: SessionDocument): FullSessionOutputModel => {
+}: Session): FullSessionOutputModel => {
   return new FullSessionOutputModel({
-    id,
     ip,
     userId,
     deviceId,

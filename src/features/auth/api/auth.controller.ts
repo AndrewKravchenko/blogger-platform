@@ -10,8 +10,8 @@ import { MeOutputModel } from '../../users/api/models/output/user.output.model'
 import { EmailPipe } from '../../../infrastructure/pipes/email.pipe'
 import { AccessTokenAuthGuard } from '../guards/access-token-auth.guard'
 import { LoginAuthGuard } from '../guards/login-auth.guard'
-import { RefreshTokenAuthGuard } from '../guards/refresh-token-auth.guard'
 import { seconds, Throttle } from '@nestjs/throttler'
+import { ActiveSessionAuthGuard } from '../guards/active-session-auth.guard'
 
 @Controller('auth')
 export class AuthController {
@@ -35,7 +35,7 @@ export class AuthController {
     @Res({ passthrough: true }) res,
   ): Promise<{ accessToken: string } | void> {
     const { browser } = new UAParser(userAgent).getResult()
-    const deviceName = `${browser.name} ${browser.version}`
+    const deviceName = `${browser.name || 'Unknown'}`
     const result = await this.authService.login(currentUserId, ip, deviceName)
 
     if (result.hasError() || !result.data) {
@@ -86,7 +86,7 @@ export class AuthController {
     return handleInterlayerResult(result)
   }
 
-  @UseGuards(RefreshTokenAuthGuard)
+  @UseGuards(ActiveSessionAuthGuard)
   @Post('refresh-token')
   @HttpCode(HttpStatus.OK)
   async refreshAccessToken(
@@ -104,7 +104,7 @@ export class AuthController {
     return { accessToken: result.data.accessToken }
   }
 
-  @UseGuards(RefreshTokenAuthGuard)
+  @UseGuards(ActiveSessionAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   async logout(@CurrentUser() { deviceId }: UserPayload, @Res({ passthrough: true }) res): Promise<void> {

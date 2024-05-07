@@ -1,33 +1,33 @@
 import { Injectable } from '@nestjs/common'
-import { SessionsRepository } from '../infrastructure/sessions.repository'
-import { SessionsQueryRepository } from '../infrastructure/sessions.query-repository'
 import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
-import { Session } from '../domain/session.entity'
+import { Session } from '../domain/session.sql-entity'
 import { SessionOutputModel } from '../api/models/output/session.output.model'
+import { SessionsSqlRepository } from '../infrastructure/sessions.sql-repository'
+import { SessionsSqlQueryRepository } from '../infrastructure/sessions-sql-query-repository.service'
 
 export type RefreshedSession = {
   ip: string
-  expirationAt: string
-  lastActiveDate: string
+  expirationAt: Date
+  lastActiveDate: Date
 }
 
 @Injectable()
 export class SessionsService {
   constructor(
-    private readonly sessionsRepository: SessionsRepository,
-    private readonly sessionsQueryRepository: SessionsQueryRepository,
+    private readonly sessionsSqlRepository: SessionsSqlRepository,
+    private readonly sessionsSqlQueryRepository: SessionsSqlQueryRepository,
   ) {}
 
   async getSessions(userId: string): Promise<SessionOutputModel[]> {
-    return await this.sessionsQueryRepository.getUserSessions(userId)
+    return await this.sessionsSqlQueryRepository.getUserSessions(userId)
   }
 
   async createSession(newSession: Session) {
-    return await this.sessionsRepository.createSession(newSession)
+    return await this.sessionsSqlRepository.createSession(newSession)
   }
 
-  async deleteSessionByDeviceId(userId: string, deviceId: string): Promise<InterlayerResult<any>> {
-    const session = await this.sessionsRepository.getSessionByDeviceId(deviceId)
+  async deleteSessionByDeviceId(userId: string, deviceId: string): Promise<InterlayerResult> {
+    const session = await this.sessionsSqlRepository.getSessionByDeviceId(deviceId)
 
     if (!session) {
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
@@ -36,11 +36,12 @@ export class SessionsService {
       return InterlayerResult.Error(InterlayerResultCode.Forbidden)
     }
 
-    await this.sessionsRepository.deleteSessionByDeviceId(deviceId)
+    await this.sessionsSqlRepository.deleteSessionByDeviceId(deviceId)
     return InterlayerResult.Ok()
   }
 
-  async deleteSessions(userId: string, currentDeviceId: string) {
-    return await this.sessionsRepository.deleteSessions(userId, currentDeviceId)
+  async deleteSessions(userId: string, currentDeviceId: string): Promise<InterlayerResult> {
+    const isDeleted = await this.sessionsSqlRepository.deleteSessions(userId, currentDeviceId)
+    return isDeleted ? InterlayerResult.Ok() : InterlayerResult.Error(InterlayerResultCode.NotFound)
   }
 }

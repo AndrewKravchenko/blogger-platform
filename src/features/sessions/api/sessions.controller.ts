@@ -7,6 +7,7 @@ import { RefreshTokenAuthGuard } from '../../auth/guards/refresh-token-auth.guar
 import { CurrentUserId } from '../../auth/decorators/current-user-id.param.decorator'
 import { CurrentUser } from '../../auth/decorators/current-user.param.decorator'
 import { UserPayload } from '../../auth/api/models/input/auth.input.model'
+import { ActiveSessionAuthGuard } from '../../auth/guards/active-session-auth.guard'
 
 @Controller('security')
 export class SessionsController {
@@ -18,7 +19,7 @@ export class SessionsController {
     return await this.sessionsService.getSessions(currentUserId)
   }
 
-  @UseGuards(RefreshTokenAuthGuard)
+  @UseGuards(ActiveSessionAuthGuard)
   @Delete('devices/:deviceId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteSessionByDeviceId(
@@ -33,6 +34,7 @@ export class SessionsController {
   @Delete('devices')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteSessions(@CurrentUser() { userId, deviceId }: UserPayload): Promise<void> {
-    await this.sessionsService.deleteSessions(userId, deviceId)
+    const result = await this.sessionsService.deleteSessions(userId, deviceId)
+    return handleInterlayerResult(result)
   }
 }

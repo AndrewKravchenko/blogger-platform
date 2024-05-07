@@ -18,6 +18,18 @@ export class DatabaseSettings {
   MONGO_DEV_URI: string = this.environmentVariables.MONGO_DEV_URI
 }
 
+export class SqlDatabaseSettings {
+  constructor(private environmentVariables: EnvironmentVariables) {}
+  @IsString()
+  SQL_USER_NAME: string = this.environmentVariables.SQL_USER_NAME
+
+  @IsString()
+  SQL_PASSWORD: string = this.environmentVariables.SQL_PASSWORD
+
+  @IsString()
+  SQL_DATABASE_NAME: string = this.environmentVariables.SQL_DATABASE_NAME
+}
+
 export class ApiSettings {
   constructor(private environmentVariables: EnvironmentVariables) {}
   @IsNumber()
@@ -62,6 +74,9 @@ export class Configuration {
   databaseSettings: DatabaseSettings
 
   @ValidateNested()
+  sqlDatabaseSettings: SqlDatabaseSettings
+
+  @ValidateNested()
   environmentSettings: EnvironmentSettings
 
   @ValidateNested()
@@ -81,6 +96,7 @@ export class Configuration {
     return new this({
       apiSettings: new ApiSettings(environmentVariables),
       databaseSettings: new DatabaseSettings(environmentVariables),
+      sqlDatabaseSettings: new SqlDatabaseSettings(environmentVariables),
       environmentSettings: new EnvironmentSettings(environmentVariables),
       jwtSettings: new JwtSettings(environmentVariables),
       emailSettings: new EmailSettings(environmentVariables),

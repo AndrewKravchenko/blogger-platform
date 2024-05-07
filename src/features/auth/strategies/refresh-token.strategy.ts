@@ -2,16 +2,12 @@ import { Strategy } from 'passport-jwt'
 import { PassportStrategy } from '@nestjs/passport'
 import { Injectable, UnauthorizedException } from '@nestjs/common'
 import { Request } from 'express'
-import { AuthService } from '../application/auth.service'
 import { ConfigService } from '@nestjs/config'
 import { Configuration } from '../../../settings/configuration'
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'refresh-token') {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly configService: ConfigService<Configuration, true>,
-  ) {
+  constructor(private readonly configService: ConfigService<Configuration, true>) {
     const secretOrKey = configService.get('jwtSettings.JWT_SECRET', {
       infer: true,
     })
@@ -30,13 +26,6 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'refresh-to
 
   async validate(payload: any) {
     if (!payload.userId || !payload.deviceId) {
-      throw new UnauthorizedException()
-    }
-
-    const { userId, deviceId, iat } = payload
-    const isActiveSession = await this.authService.isActiveSession(userId, deviceId, iat)
-
-    if (!isActiveSession) {
       throw new UnauthorizedException()
     }
 

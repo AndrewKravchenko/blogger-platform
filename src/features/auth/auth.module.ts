@@ -8,11 +8,12 @@ import { SessionsModule } from '../sessions/sessions.module'
 import { LoginStrategy } from './strategies/login.strategy'
 import { AccessTokenStrategy } from './strategies/access-token.strategy'
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy'
+import { ActiveSessionStrategy } from './strategies/active-session.strategy'
 
 @Module({
   imports: [SessionsModule, UsersModule, EmailModule],
   controllers: [AuthController],
-  providers: [AuthService, LoginStrategy, AccessTokenStrategy, RefreshTokenStrategy, JwtService],
+  providers: [AuthService, LoginStrategy, AccessTokenStrategy, RefreshTokenStrategy, ActiveSessionStrategy, JwtService],
   exports: [AuthService],
 })
 export class AuthModule {}

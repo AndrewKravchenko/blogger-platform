@@ -1,6 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { BlogsRepository } from '../../../infrastructure/blogs.repository'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
+import { BlogsSqlRepository } from '../../../infrastructure/blogs.sql-repository'
 
 export class UpdateBlogCommand {
   public blogId: string
@@ -18,11 +18,11 @@ export class UpdateBlogCommand {
 
 @CommandHandler(UpdateBlogCommand)
 export class UpdateBlogHandler implements ICommandHandler<UpdateBlogCommand, InterlayerResult> {
-  constructor(private readonly blogsRepository: BlogsRepository) {}
+  constructor(private readonly blogsSqlRepository: BlogsSqlRepository) {}
 
   async execute(command: UpdateBlogCommand): Promise<InterlayerResult> {
     const { blogId, ...updatedBlog } = command
-    const isUpdated = await this.blogsRepository.updateBlog(blogId, updatedBlog)
+    const isUpdated = await this.blogsSqlRepository.updateBlog(blogId, updatedBlog)
 
     if (isUpdated) {
       return InterlayerResult.Ok()

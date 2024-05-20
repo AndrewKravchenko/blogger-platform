@@ -1,8 +1,8 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { PostOutputModel } from '../../../api/models/output/post.output.model'
 import { PostsService } from '../../posts.service'
-import { PostsQueryRepository } from '../../../infrastructure/posts.query-repository'
 import { PaginatedResponse } from '../../../../../../common/models/common.model'
+import { PostsSqlQueryRepository } from '../../../infrastructure/posts.sql-query-repository'
 
 export class GetPostsQueryPayload {
   public userId?: string
@@ -24,15 +24,14 @@ export class GetPostsQueryPayload {
 export class GetPostsHandler implements IQueryHandler<GetPostsQueryPayload> {
   constructor(
     private readonly postsService: PostsService,
-    private readonly postsQueryRepository: PostsQueryRepository,
+    private readonly postsSqlQueryRepository: PostsSqlQueryRepository,
   ) {}
 
   async execute(queryPayload: GetPostsQueryPayload): Promise<PaginatedResponse<PostOutputModel>> {
     const { userId, ...postQuery } = queryPayload
 
-    const paginatedPosts = await this.postsQueryRepository.getPosts(postQuery)
-    await Promise.all(paginatedPosts.items.map((post) => this.postsService.extendPostLikesInfo(post, userId)))
-
+    const paginatedPosts = await this.postsSqlQueryRepository.getPosts(postQuery, userId)
+    // await Promise.all(paginatedPosts.items.map((post) => this.postsService.extendPostLikesInfo(post, userId)))
     return paginatedPosts
   }
 }

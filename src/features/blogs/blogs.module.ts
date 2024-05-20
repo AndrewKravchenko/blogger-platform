@@ -10,15 +10,13 @@ import { Blog, BlogSchema } from './blogs/domain/blog.entity'
 import { Post, PostSchema } from './posts/domain/post.entity'
 import { Comment, CommentSchema } from './comments/domain/comment.entity'
 import { Like, LikeSchema } from './likes/domain/like.entity'
-import { LikesQueryRepository } from './likes/infrastructure/likes.query-repository'
-import { LikesRepository } from './likes/infrastructure/likes.repository'
+import { LikesSqlQueryRepository } from './likes/infrastructure/likes.sql-query-repository'
+import { LikesSqlRepository } from './likes/infrastructure/likes-sql-repository.service'
 import { LikesService } from './likes/application/likes.service'
 import { PostsRepository } from './posts/infrastructure/posts.repository'
 import { PostsQueryRepository } from './posts/infrastructure/posts.query-repository'
 import { UsersModule } from '../users/users.module'
 import { AuthModule } from '../auth/auth.module'
-import { CommentsQueryRepository } from './comments/infrastructure/comments.query-repository'
-import { CommentsRepository } from './comments/infrastructure/comments.repository'
 import { GetPostsByBlogIdHandler } from './blogs/application/use-cases/queries/get-posts-by-blog-id.handler'
 import { CreateBlogHandler } from './blogs/application/use-cases/commands/create-blog.handler'
 import { CreatePostToBlogHandler } from './blogs/application/use-cases/commands/create-post-to-blog.handler'
@@ -33,23 +31,36 @@ import { GetPostByIdHandler } from './posts/application/use-cases/queries/get-po
 import { GetPostCommentsHandler } from './posts/application/use-cases/queries/get-post-comments.handler'
 import { CreatePostHandler } from './posts/application/use-cases/commands/create-post.handler'
 import { CreateCommentToPostHandler } from './posts/application/use-cases/commands/create-comment-to-post.handler'
-import { UpdatePostHandler } from './posts/application/use-cases/commands/update-post.handler'
 import { UpdatePostLikeStatusHandler } from './posts/application/use-cases/commands/update-post-like-status.handler'
-import { DeletePostHandler } from './posts/application/use-cases/commands/delete-post.handler'
 import { BlogIsExistConstraint } from '../../infrastructure/decorators/validate/blog-is-exist'
+import { BlogsSqlQueryRepository } from './blogs/infrastructure/blogs.sql-query-repository'
+import { BlogsSqlRepository } from './blogs/infrastructure/blogs.sql-repository'
+import { PostsSqlRepository } from './posts/infrastructure/posts.sql-repository'
+import { PostsSqlQueryRepository } from './posts/infrastructure/posts.sql-query-repository'
+import { SuperAdminBlogsController } from './blogs/api/super-admin-blogs.controller'
+import { DeletePostHandler } from './blogs/application/use-cases/commands/delete-post.handler'
+import { UpdatePostHandler } from './blogs/application/use-cases/commands/update-post.handler'
+import { CommentsSqlQueryRepository } from './comments/infrastructure/comments.sql-query-repository'
+import { CommentsSqlRepository } from './comments/infrastructure/comments.sql-repository'
 
 const blogsProviders: Provider[] = [
+  BlogsSqlRepository,
+  BlogsSqlQueryRepository,
   BlogsQueryRepository,
   BlogsRepository,
   GetPostsByBlogIdHandler,
   CreateBlogHandler,
   CreatePostToBlogHandler,
   UpdateBlogHandler,
+  UpdatePostHandler,
   DeleteBlogHandler,
+  DeletePostHandler,
   BlogIsExistConstraint,
 ]
 
 const postsProviders: Provider[] = [
+  PostsSqlRepository,
+  PostsSqlQueryRepository,
   PostsRepository,
   PostsQueryRepository,
   PostsService,
@@ -64,14 +75,14 @@ const postsProviders: Provider[] = [
 ]
 
 const commentsProviders: Provider[] = [
-  CommentsQueryRepository,
-  CommentsRepository,
+  CommentsSqlRepository,
+  CommentsSqlQueryRepository,
   GetCommentByIdHandler,
   UpdateCommentHandler,
   UpdateCommentLikeStatusHandler,
   DeleteCommentHandler,
 ]
-const likesProviders: Provider[] = [LikesQueryRepository, LikesRepository, LikesService]
+const likesProviders: Provider[] = [LikesSqlQueryRepository, LikesSqlRepository, LikesService]
 
 @Module({
   imports: [
@@ -84,7 +95,7 @@ const likesProviders: Provider[] = [LikesQueryRepository, LikesRepository, Likes
     AuthModule,
     UsersModule,
   ],
-  controllers: [BlogsController, PostsController, CommentsController],
+  controllers: [BlogsController, SuperAdminBlogsController, PostsController, CommentsController],
   providers: [...blogsProviders, ...postsProviders, ...commentsProviders, ...likesProviders],
 })
 export class BlogsModule {}

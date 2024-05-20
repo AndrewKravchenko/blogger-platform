@@ -80,15 +80,13 @@ export class UsersQueryRepository {
   //   }
   // }
 
-  public async getUserById(userId: string): Promise<Nullable<UserOutputModel>> {
-    const user = await this.userModel.findById(userId)
-
-    if (!user) {
-      return null
-    }
-
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    return UserOutputMapper(user)
-  }
+  // public async getUserById(userId: string): Promise<Nullable<UserOutputModel>> {
+  //   const user = await this.userModel.findById(userId)
+  //
+  //   if (!user) {
+  //     return null
+  //   }
+  //
+  //   return UserOutputMapper(user)
+  // }
 }

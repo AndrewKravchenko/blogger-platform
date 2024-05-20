@@ -1,10 +1,10 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
 import { PostOutputModel } from '../../../../posts/api/models/output/post.output.model'
-import { Post } from '../../../../posts/domain/post.entity'
-import { BlogsQueryRepository } from '../../../infrastructure/blogs.query-repository'
-import { PostsRepository } from '../../../../posts/infrastructure/posts.repository'
+import { Post } from '../../../../posts/domain/post.sql-entity'
 import { PostsService } from '../../../../posts/application/posts.service'
+import { BlogsSqlQueryRepository } from '../../../infrastructure/blogs.sql-query-repository'
+import { PostsSqlRepository } from '../../../../posts/infrastructure/posts.sql-repository'
 
 export class CreatePostToBlogCommand {
   public blogId: string
@@ -28,8 +28,8 @@ export class CreatePostToBlogHandler
 {
   constructor(
     private readonly postsService: PostsService,
-    private readonly postsRepository: PostsRepository,
-    private readonly blogsQueryRepository: BlogsQueryRepository,
+    private readonly postsSqlRepository: PostsSqlRepository,
+    private readonly blogsSqlQueryRepository: BlogsSqlQueryRepository,
   ) {}
 
   async execute({
@@ -39,16 +39,16 @@ export class CreatePostToBlogHandler
     content,
     userId,
   }: CreatePostToBlogCommand): Promise<InterlayerResult<Nullable<PostOutputModel>>> {
-    const blog = await this.blogsQueryRepository.getBlogById(blogId)
+    const blog = await this.blogsSqlQueryRepository.getBlogById(blogId)
 
     if (!blog) {
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
-    const newPost = new Post({ blogId, title, shortDescription, content, blogName: blog.name })
-    const createdPost = await this.postsRepository.create(newPost)
-    const postWithExtendedLikesInfo = await this.postsService.extendPostLikesInfo(createdPost, userId)
+    const newPost = new Post({ blogId, title, shortDescription, content })
+    const createdPost = await this.postsSqlRepository.create(newPost)
+    // const postWithExtendedLikesInfo = await this.postsService.extendPostLikesInfo(createdPost, userId)
 
-    return InterlayerResult.Ok(postWithExtendedLikesInfo)
+    return InterlayerResult.Ok(createdPost)
   }
 }

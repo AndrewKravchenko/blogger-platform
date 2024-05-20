@@ -19,8 +19,6 @@ export class ActiveSessionStrategy extends PassportStrategy(Strategy, 'active-se
     super({
       jwtFromRequest: (req: Request) => {
         if (req.cookies?.['refreshToken']) {
-          console.log('req', req.route.path)
-
           return req.cookies['refreshToken']
         }
         return null
@@ -32,7 +30,6 @@ export class ActiveSessionStrategy extends PassportStrategy(Strategy, 'active-se
 
   async validate(payload: any) {
     if (!payload.userId || !payload.deviceId) {
-      console.log('active-session payload', payload)
       throw new UnauthorizedException()
     }
 
@@ -40,8 +37,6 @@ export class ActiveSessionStrategy extends PassportStrategy(Strategy, 'active-se
     const session = await this.sessionsSqlRepository.getSessionByDeviceId(deviceId)
 
     if (!session) {
-      console.log('active-session session', session)
-
       throw new UnauthorizedException()
     }
 
@@ -49,9 +44,6 @@ export class ActiveSessionStrategy extends PassportStrategy(Strategy, 'active-se
     const isActiveSession = lastActiveDate === session.lastActiveDate.getTime()
 
     if (!isActiveSession) {
-      console.log(session)
-      console.log(session.lastActiveDate.getTime())
-      console.log(lastActiveDate)
       throw new UnauthorizedException()
     }
     if (userId !== session.userId) {

@@ -1,6 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { BlogsRepository } from '../../../infrastructure/blogs.repository'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
+import { BlogsSqlRepository } from '../../../infrastructure/blogs.sql-repository'
 
 export class DeleteBlogCommand {
   constructor(public blogId: string) {}
@@ -8,10 +8,10 @@ export class DeleteBlogCommand {
 
 @CommandHandler(DeleteBlogCommand)
 export class DeleteBlogHandler implements ICommandHandler<DeleteBlogCommand, InterlayerResult> {
-  constructor(private readonly blogsRepository: BlogsRepository) {}
+  constructor(private readonly blogsSqlRepository: BlogsSqlRepository) {}
 
   async execute({ blogId }: DeleteBlogCommand): Promise<InterlayerResult> {
-    const isDeleted = await this.blogsRepository.deleteBlogById(blogId)
+    const isDeleted = await this.blogsSqlRepository.deleteBlogById(blogId)
 
     if (isDeleted) {
       return InterlayerResult.Ok()

@@ -1,10 +1,10 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { PostsRepository } from '../../../infrastructure/posts.repository'
-import { PostsQueryRepository } from '../../../infrastructure/posts.query-repository'
 import { LikeStatus } from '../../../../likes/domain/like.entity'
 import { LikesService } from '../../../../likes/application/likes.service'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
-import { LikesQueryRepository } from '../../../../likes/infrastructure/likes.query-repository'
+import { LikesSqlQueryRepository } from '../../../../likes/infrastructure/likes.sql-query-repository'
+import { PostsSqlQueryRepository } from '../../../infrastructure/posts.sql-query-repository'
+import { PostsSqlRepository } from '../../../infrastructure/posts.sql-repository'
 
 export class UpdatePostLikeStatusCommand {
   constructor(
@@ -17,14 +17,14 @@ export class UpdatePostLikeStatusCommand {
 @CommandHandler(UpdatePostLikeStatusCommand)
 export class UpdatePostLikeStatusHandler implements ICommandHandler<UpdatePostLikeStatusCommand, InterlayerResult> {
   constructor(
-    private readonly postsQueryRepository: PostsQueryRepository,
+    private readonly postsSqlQueryRepository: PostsSqlQueryRepository,
     private readonly likesService: LikesService,
-    private readonly postsRepository: PostsRepository,
-    private readonly likesQueryRepository: LikesQueryRepository,
+    private readonly postsSqlRepository: PostsSqlRepository,
+    private readonly likesQueryRepository: LikesSqlQueryRepository,
   ) {}
 
   async execute({ postId, userId, newLikeStatus }: UpdatePostLikeStatusCommand): Promise<InterlayerResult> {
-    const post = await this.postsQueryRepository.getPostById(postId)
+    const post = await this.postsSqlQueryRepository.getPostById(postId)
 
     if (!post) {
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
@@ -53,6 +53,11 @@ export class UpdatePostLikeStatusHandler implements ICommandHandler<UpdatePostLi
     newLikeStatus: LikeStatus,
   ): Promise<boolean> {
     const likesCountUpdate = this.likesService.calculateLikesCountChanges(currentLikeStatus, newLikeStatus)
-    return await this.postsRepository.updateLikesCount(postId, likesCountUpdate)
+
+    if (!likesCountUpdate) {
+      return true
+    }
+
+    return await this.postsSqlRepository.updateLikesCount(postId, likesCountUpdate)
   }
 }

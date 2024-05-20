@@ -23,9 +23,9 @@ export class UsersSqlQueryRepository {
       FROM public."User"
       WHERE id = $1
     `
-    const values = [userId]
+    const params = [userId]
 
-    const [user] = await this.dataSource.query(query, values)
+    const [user] = await this.dataSource.query(query, params)
 
     if (!user) {
       return null
@@ -40,9 +40,9 @@ export class UsersSqlQueryRepository {
       FROM public."User"
       WHERE login = $1 OR email = $2
     `
-    const values = [loginOrEmail, email || loginOrEmail]
+    const params = [loginOrEmail, email || loginOrEmail]
 
-    const [user] = await this.dataSource.query(query, values)
+    const [user] = await this.dataSource.query(query, params)
 
     if (!user) {
       return null
@@ -106,5 +106,19 @@ export class UsersSqlQueryRepository {
       totalCount: +count,
       items: users.map(UserOutputMapper),
     }
+  }
+
+  async getUserById(userId: string): Promise<Nullable<UserOutputModel>> {
+    const query = `
+      SELECT *
+      FROM public."User"
+      WHERE id = $1`
+    const [user] = await this.dataSource.query(query, [userId])
+
+    if (!user) {
+      return null
+    }
+
+    return UserOutputMapper(user)
   }
 }

@@ -1,11 +1,11 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
-import { PostsQueryRepository } from '../../../infrastructure/posts.query-repository'
-import { CommentsQueryRepository } from '../../../../comments/infrastructure/comments.query-repository'
 import { CommentOutputModel } from '../../../../comments/api/models/output/comment.output.model'
-import { LikesQueryRepository } from '../../../../likes/infrastructure/likes.query-repository'
+import { LikesSqlQueryRepository } from '../../../../likes/infrastructure/likes.sql-query-repository'
 import { PaginatedResponse } from '../../../../../../common/models/common.model'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
 import { LikeStatus } from '../../../../likes/domain/like.entity'
+import { PostsSqlQueryRepository } from '../../../infrastructure/posts.sql-query-repository'
+import { CommentsSqlQueryRepository } from '../../../../comments/infrastructure/comments.sql-query-repository'
 
 export class GetPostCommentsQueryPayload {
   public postId: string
@@ -28,9 +28,9 @@ export class GetPostCommentsQueryPayload {
 @QueryHandler(GetPostCommentsQueryPayload)
 export class GetPostCommentsHandler implements IQueryHandler<GetPostCommentsQueryPayload> {
   constructor(
-    private readonly likesQueryRepository: LikesQueryRepository,
-    private readonly postsQueryRepository: PostsQueryRepository,
-    private readonly commentsQueryRepository: CommentsQueryRepository,
+    private readonly likesQueryRepository: LikesSqlQueryRepository,
+    private readonly postsSqlQueryRepository: PostsSqlQueryRepository,
+    private readonly commentsSqlQueryRepository: CommentsSqlQueryRepository,
   ) {}
 
   async execute(
@@ -38,14 +38,14 @@ export class GetPostCommentsHandler implements IQueryHandler<GetPostCommentsQuer
   ): Promise<InterlayerResult<Nullable<PaginatedResponse<CommentOutputModel>>>> {
     const { postId, userId, ...query } = queryPayload
 
-    const post = await this.postsQueryRepository.getPostById(postId)
+    const post = await this.postsSqlQueryRepository.getPostById(postId)
 
     if (!post) {
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
-    const paginatedComments = await this.commentsQueryRepository.getPostComments(query, postId)
-    await Promise.all(paginatedComments.items.map((comment) => this.extendCommentLikesInfo(comment, userId)))
+    const paginatedComments = await this.commentsSqlQueryRepository.getPostComments(query, postId, userId)
+    // await Promise.all(paginatedComments.items.map((comment) => this.extendCommentLikesInfo(comment, userId)))
 
     return InterlayerResult.Ok(paginatedComments)
   }

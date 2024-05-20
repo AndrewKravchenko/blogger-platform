@@ -2,9 +2,9 @@ import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
 import { LikeStatus } from '../../../../likes/domain/like.entity'
 import { LikesService } from '../../../../likes/application/likes.service'
-import { LikesQueryRepository } from '../../../../likes/infrastructure/likes.query-repository'
-import { CommentsQueryRepository } from '../../../infrastructure/comments.query-repository'
-import { CommentsRepository } from '../../../infrastructure/comments.repository'
+import { LikesSqlQueryRepository } from '../../../../likes/infrastructure/likes.sql-query-repository'
+import { CommentsSqlRepository } from '../../../infrastructure/comments.sql-repository'
+import { CommentsSqlQueryRepository } from '../../../infrastructure/comments.sql-query-repository'
 
 export class UpdateCommentLikeStatusCommand {
   constructor(
@@ -20,13 +20,13 @@ export class UpdateCommentLikeStatusHandler
 {
   constructor(
     private readonly likesService: LikesService,
-    private readonly likesQueryRepository: LikesQueryRepository,
-    private readonly commentsRepository: CommentsRepository,
-    private readonly commentsQueryRepository: CommentsQueryRepository,
+    private readonly likesQueryRepository: LikesSqlQueryRepository,
+    private readonly commentsSqlRepository: CommentsSqlRepository,
+    private readonly commentsSqlQueryRepository: CommentsSqlQueryRepository,
   ) {}
 
   async execute({ commentId, userId, newLikeStatus }: UpdateCommentLikeStatusCommand): Promise<InterlayerResult> {
-    const comment = await this.commentsQueryRepository.getCommentById(commentId)
+    const comment = await this.commentsSqlQueryRepository.getCommentById(commentId, userId)
 
     if (!comment) {
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
@@ -56,6 +56,14 @@ export class UpdateCommentLikeStatusHandler
   ): Promise<boolean> {
     const likesCountUpdate = this.likesService.calculateLikesCountChanges(currentLikeStatus, newLikeStatus)
 
-    return await this.commentsRepository.updateLikesCount(commentId, likesCountUpdate)
+    if (!likesCountUpdate) {
+      return true
+    }
+
+    return await this.commentsSqlRepository.updateLikesCount(
+      commentId,
+      likesCountUpdate.likesCount,
+      likesCountUpdate.dislikesCount,
+    )
   }
 }

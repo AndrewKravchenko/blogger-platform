@@ -1,6 +1,6 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
-import { CommentsRepository } from '../../../infrastructure/comments.repository'
+import { CommentsSqlRepository } from '../../../infrastructure/comments.sql-repository'
 
 export class UpdateCommentCommand {
   constructor(
@@ -11,10 +11,10 @@ export class UpdateCommentCommand {
 
 @CommandHandler(UpdateCommentCommand)
 export class UpdateCommentHandler implements ICommandHandler<UpdateCommentCommand, InterlayerResult> {
-  constructor(private readonly commentsRepository: CommentsRepository) {}
+  constructor(private readonly commentsSqlRepository: CommentsSqlRepository) {}
 
   async execute({ commentId, content }: UpdateCommentCommand): Promise<InterlayerResult> {
-    const isUpdated = await this.commentsRepository.updateComment(commentId, content)
+    const isUpdated = await this.commentsSqlRepository.updateComment(commentId, content)
 
     if (isUpdated) {
       return InterlayerResult.Ok()

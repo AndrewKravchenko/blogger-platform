@@ -1,10 +1,10 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
 import { Post } from '../../../domain/post.entity'
-import { PostsRepository } from '../../../infrastructure/posts.repository'
-import { BlogsQueryRepository } from '../../../../blogs/infrastructure/blogs.query-repository'
 import { PostsService } from '../../posts.service'
 import { PostOutputModel } from '../../../api/models/output/post.output.model'
+import { BlogsSqlQueryRepository } from '../../../../blogs/infrastructure/blogs.sql-query-repository'
+import { PostsSqlRepository } from '../../../infrastructure/posts.sql-repository'
 
 export class CreatePostCommand {
   public title: string
@@ -28,20 +28,20 @@ export class CreatePostHandler
 {
   constructor(
     private readonly postsService: PostsService,
-    private readonly postsRepository: PostsRepository,
-    private readonly blogsQueryRepository: BlogsQueryRepository,
+    private readonly postsSqlRepository: PostsSqlRepository,
+    private readonly blogsSqlQueryRepository: BlogsSqlQueryRepository,
   ) {}
 
   async execute(command: CreatePostCommand): Promise<InterlayerResult<Nullable<PostOutputModel>>> {
     const { userId, ...postInputModel } = command
-    const blog = await this.blogsQueryRepository.getBlogById(command.blogId)
+    const blog = await this.blogsSqlQueryRepository.getBlogById(command.blogId)
 
     if (!blog) {
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
     const newPost = new Post({ ...postInputModel, blogName: blog.name })
-    const createdPost = await this.postsRepository.create(newPost)
+    const createdPost = await this.postsSqlRepository.create(newPost)
 
     return InterlayerResult.Ok(await this.postsService.extendPostLikesInfo(createdPost, userId))
   }

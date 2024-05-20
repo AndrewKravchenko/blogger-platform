@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common'
-import { UsersController } from './api/users.controller'
 import { UsersService } from './application/users.service'
 import { UsersQueryRepository } from './infrastructure/users.query-repository'
 import { UsersRepository } from './infrastructure/users.repository'
@@ -11,7 +10,7 @@ import { SuperAdminUsersController } from './api/super-admin-users.controller'
 
 @Module({
   imports: [MongooseModule.forFeature([{ name: User.name, schema: UserSchema }])],
-  controllers: [UsersController, SuperAdminUsersController],
+  controllers: [SuperAdminUsersController],
   providers: [UsersSqlQueryRepository, UsersQueryRepository, UsersRepository, UsersSqlRepository, UsersService],
   exports: [UsersQueryRepository, UsersSqlQueryRepository, UsersSqlRepository, UsersRepository, UsersService],
 })

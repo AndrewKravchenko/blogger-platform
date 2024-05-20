@@ -1,8 +1,8 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { PostOutputModel } from '../../../api/models/output/post.output.model'
 import { PostsService } from '../../posts.service'
-import { PostsQueryRepository } from '../../../infrastructure/posts.query-repository'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
+import { PostsSqlQueryRepository } from '../../../infrastructure/posts.sql-query-repository'
 
 export class GetPostByIdQueryPayload {
   constructor(
@@ -15,16 +15,17 @@ export class GetPostByIdQueryPayload {
 export class GetPostByIdHandler implements IQueryHandler<GetPostByIdQueryPayload> {
   constructor(
     private readonly postsService: PostsService,
-    private readonly postsQueryRepository: PostsQueryRepository,
+    private readonly postsSqlQueryRepository: PostsSqlQueryRepository,
   ) {}
 
   async execute({ postId, userId }: GetPostByIdQueryPayload): Promise<InterlayerResult<Nullable<PostOutputModel>>> {
-    const post = await this.postsQueryRepository.getPostById(postId)
+    const post = await this.postsSqlQueryRepository.getPostById(postId, userId)
 
     if (!post) {
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
-    return InterlayerResult.Ok(await this.postsService.extendPostLikesInfo(post, userId))
+    // return InterlayerResult.Ok(await this.postsService.extendPostLikesInfo(post, userId))
+    return InterlayerResult.Ok(post)
   }
 }

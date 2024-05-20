@@ -1,4 +1,4 @@
-import { BlogDocument } from '../../../domain/blog.entity'
+import { Blog } from '../../../domain/blog.sql-entity'
 
 export class BlogOutputModel {
   constructor(
@@ -7,7 +7,7 @@ export class BlogOutputModel {
     public description: string,
     public websiteUrl: string,
     public isMembership: boolean,
-    public createdAt: string,
+    public createdAt: Date,
   ) {}
 }
 
@@ -20,6 +20,6 @@ export const BlogOutputMapper = ({
   websiteUrl,
   isMembership,
   createdAt,
-}: BlogDocument): BlogOutputModel => {
+}: Blog): BlogOutputModel => {
   return new BlogOutputModel(id, name, description, websiteUrl, isMembership, createdAt)
 }

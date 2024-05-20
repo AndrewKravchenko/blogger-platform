@@ -1,7 +1,7 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
-import { BlogsRepository } from '../../../infrastructure/blogs.repository'
 import { BlogOutputModel } from '../../../api/models/output/blog.output.model'
 import { InterlayerResult } from '../../../../../../common/models/result-layer.model'
+import { BlogsSqlRepository } from '../../../infrastructure/blogs.sql-repository'
 
 export class CreateBlogCommand {
   public name: string
@@ -17,10 +17,10 @@ export class CreateBlogCommand {
 
 @CommandHandler(CreateBlogCommand)
 export class CreateBlogHandler implements ICommandHandler<CreateBlogCommand, InterlayerResult<BlogOutputModel>> {
-  constructor(private readonly blogsRepository: BlogsRepository) {}
+  constructor(private readonly blogsSqlRepository: BlogsSqlRepository) {}
 
   async execute(command: CreateBlogCommand): Promise<InterlayerResult<BlogOutputModel>> {
-    const createdBlog = await this.blogsRepository.create(command)
+    const createdBlog = await this.blogsSqlRepository.create(command)
     return InterlayerResult.Ok(createdBlog)
   }
 }

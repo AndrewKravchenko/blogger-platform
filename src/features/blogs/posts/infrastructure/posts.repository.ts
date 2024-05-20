@@ -2,9 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model } from 'mongoose'
 import { Post } from '../domain/post.entity'
-import { CreatePostModel } from '../api/models/input/create-post.input.model'
 import { ObjectId } from 'mongodb'
-import { PostOutputDataBaseMapper, PostOutputModel } from '../api/models/output/post.output.model'
 import { UpdatePostInputModel } from '../api/models/input/update-post.input.model'
 import { UpdateLikesCount } from '../../likes/application/likes.service'
 
@@ -12,10 +10,10 @@ import { UpdateLikesCount } from '../../likes/application/likes.service'
 export class PostsRepository {
   constructor(@InjectModel(Post.name) private postModel: Model<Post>) {}
 
-  async create(post: CreatePostModel): Promise<PostOutputModel> {
-    const createdPost = await this.postModel.create(post)
-    return PostOutputDataBaseMapper(createdPost)
-  }
+  // async create(post: CreatePostModel): Promise<PostOutputModel> {
+  //   const createdPost = await this.postModel.create(post)
+  //   return PostOutputDataBaseMapper(createdPost)
+  // }
 
   async updatePost(postId: string, updatedPost: UpdatePostInputModel): Promise<boolean> {
     const result = await this.postModel.updateOne({ _id: new ObjectId(postId) }, { $set: updatedPost })

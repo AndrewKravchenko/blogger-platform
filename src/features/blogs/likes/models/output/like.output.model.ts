@@ -1,6 +1,6 @@
 import { LikeDocument, LikeStatus } from '../../domain/like.entity'
 
-export abstract class LikeOutputModelBase {
+export abstract class LikeOutputBDModel {
   constructor(
     public userId: string,
     public myStatus: LikeStatus,
@@ -8,7 +8,7 @@ export abstract class LikeOutputModelBase {
   ) {}
 }
 
-export class PostLikeOutputModel extends LikeOutputModelBase {
+export class PostLikeOutputModel extends LikeOutputBDModel {
   constructor(
     public userId: string,
     public postId: string,
@@ -19,12 +19,18 @@ export class PostLikeOutputModel extends LikeOutputModelBase {
   }
 }
 
+export type NewestLikeOutputBDModel = {
+  login: string
+  userId: string
+  createdAt: string
+}
+
 export class NewestLikeOutputModel {
-  login: string | null
+  login: string
   userId: string
   addedAt: string
 
-  constructor(login: string | null = null, userId: string, addedAt: string) {
+  constructor(login: string, userId: string, addedAt: string) {
     this.login = login
     this.userId = userId
     this.addedAt = addedAt

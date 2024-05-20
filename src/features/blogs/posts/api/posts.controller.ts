@@ -1,11 +1,11 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Post,
   Put,
   Query,
@@ -17,16 +17,13 @@ import { PostOutputModel } from './models/output/post.output.model'
 import { Request } from 'express'
 import { QueryPostCommentsModel, QueryPostModel } from './models/input/query-post.input.model'
 import { PaginatedResponse } from '../../../../common/models/common.model'
-import { UpdatePostInputModel, UpdatePostLikeStatusInputModel } from './models/input/update-post.input.model'
+import { UpdatePostLikeStatusInputModel } from './models/input/update-post.input.model'
 import { BasicAuthGuard, BearerAuthGuard } from '../../../../infrastructure/guards/auth.guard'
 import { CurrentUserId } from '../../../auth/decorators/current-user-id.param.decorator'
 import { handleInterlayerResult, InterlayerResult } from '../../../../common/models/result-layer.model'
 import { CommentOutputModel } from '../../comments/api/models/output/comment.output.model'
-import { MongoIdPipe } from '../../../../infrastructure/pipes/mongo-id.pipe'
 import { CommandBus, QueryBus } from '@nestjs/cqrs'
-import { DeletePostCommand } from '../application/use-cases/commands/delete-post.handler'
 import { CreatePostCommand } from '../application/use-cases/commands/create-post.handler'
-import { UpdatePostCommand } from '../application/use-cases/commands/update-post.handler'
 import { UpdatePostLikeStatusCommand } from '../application/use-cases/commands/update-post-like-status.handler'
 import { CreateCommentToPostCommand } from '../application/use-cases/commands/create-comment-to-post.handler'
 import { GetPostsQueryPayload } from '../application/use-cases/queries/get-posts.handler'
@@ -54,7 +51,7 @@ export class PostsController {
   @Get(':postId')
   async getPostById(
     @Req() req: Request,
-    @Param('postId', MongoIdPipe) postId: string,
+    @Param('postId', new ParseUUIDPipe()) postId: string,
   ): Promise<PostOutputModel | void> {
     const result = await this.queryBus.execute<GetPostByIdQueryPayload, InterlayerResult<Nullable<PostOutputModel>>>(
       new GetPostByIdQueryPayload(postId, req.user?.id),
@@ -66,7 +63,7 @@ export class PostsController {
   @Get(':postId/comments')
   async getPostComments(
     @Req() req: Request,
-    @Param('postId', MongoIdPipe) postId: string,
+    @Param('postId', new ParseUUIDPipe()) postId: string,
     @Query() query: QueryPostCommentsModel,
   ): Promise<PaginatedResponse<CommentOutputModel> | void> {
     const queryPayload = new GetPostCommentsQueryPayload({ postId, userId: req.user?.id, ...query })
@@ -92,7 +89,7 @@ export class PostsController {
   @Post(':postId/comments')
   async createCommentToPost(
     @CurrentUserId() currentUserId: string,
-    @Param('postId', MongoIdPipe) postId: string,
+    @Param('postId', new ParseUUIDPipe()) postId: string,
     @Body() { content }: CreateCommentInputModel,
   ): Promise<CommentOutputModel | void> {
     const result = await this.commandBus.execute<CreateCommentToPostCommand, InterlayerResult>(
@@ -102,25 +99,11 @@ export class PostsController {
     return handleInterlayerResult(result)
   }
 
-  @UseGuards(BasicAuthGuard)
-  @Put(':postId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async updatePost(
-    @Param('postId', MongoIdPipe) postId: string,
-    @Body() body: UpdatePostInputModel,
-  ): Promise<PostOutputModel | void> {
-    const result = await this.commandBus.execute<UpdatePostCommand, InterlayerResult>(
-      new UpdatePostCommand({ ...body, postId }),
-    )
-
-    return handleInterlayerResult(result)
-  }
-
   @UseGuards(BearerAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @Put(':postId/like-status')
   async updateLikeStatus(
-    @Param('postId', MongoIdPipe) postId: string,
+    @Param('postId', new ParseUUIDPipe()) postId: string,
     @CurrentUserId() currentUserId: string,
     @Body() { likeStatus }: UpdatePostLikeStatusInputModel,
   ): Promise<PostOutputModel | void> {
@@ -128,14 +111,6 @@ export class PostsController {
       new UpdatePostLikeStatusCommand(postId, currentUserId, likeStatus),
     )
 
-    return handleInterlayerResult(result)
-  }
-
-  @UseGuards(BasicAuthGuard)
-  @Delete(':postId')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(@Param('postId', MongoIdPipe) postId: string): Promise<void> {
-    const result = await this.commandBus.execute<DeletePostCommand, InterlayerResult>(new DeletePostCommand(postId))
     return handleInterlayerResult(result)
   }
 }

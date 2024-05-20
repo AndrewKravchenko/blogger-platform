@@ -244,7 +244,7 @@ export class AuthService {
     const token = auth.split(' ')[1]
     const { userId } = this.verifyToken(token) || {}
 
-    if (userId && ObjectId.isValid(userId)) {
+    if (userId) {
       return userId
     }
 

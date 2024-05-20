@@ -27,6 +27,10 @@ export class TestingService {
     await this.commentsModel.deleteMany({})
     await this.likesModel.deleteMany({})
     await this.dataSource.query('DELETE FROM "Session"')
+    await this.dataSource.query('DELETE FROM "Blog"')
+    await this.dataSource.query('DELETE FROM "Post"')
+    await this.dataSource.query('DELETE FROM "Comment"')
+    await this.dataSource.query('DELETE FROM "Like"')
     await this.dataSource.query('DELETE FROM "User" CASCADE')
   }
 }

@@ -5,15 +5,15 @@ import {
   ValidatorConstraintInterface,
 } from 'class-validator'
 import { Injectable } from '@nestjs/common'
-import { BlogsQueryRepository } from '../../../features/blogs/blogs/infrastructure/blogs.query-repository'
+import { BlogsSqlQueryRepository } from '../../../features/blogs/blogs/infrastructure/blogs.sql-query-repository'
 
 @ValidatorConstraint({ name: 'BlogIsExist', async: true })
 @Injectable()
 export class BlogIsExistConstraint implements ValidatorConstraintInterface {
-  constructor(private readonly blogsQueryRepository: BlogsQueryRepository) {}
+  constructor(private readonly blogsSqlQueryRepository: BlogsSqlQueryRepository) {}
 
   async validate(blogId: string): Promise<boolean> {
-    const blog = await this.blogsQueryRepository.getBlogById(blogId)
+    const blog = await this.blogsSqlQueryRepository.getBlogById(blogId)
     return !!blog
   }
 

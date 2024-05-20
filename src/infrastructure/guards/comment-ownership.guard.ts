@@ -1,14 +1,14 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
 import { Request } from 'express'
-import { CommentsQueryRepository } from '../../features/blogs/comments/infrastructure/comments.query-repository'
+import { CommentsSqlQueryRepository } from '../../features/blogs/comments/infrastructure/comments.sql-query-repository'
 
 @Injectable()
 export class CommentOwnershipGuard implements CanActivate {
-  constructor(private readonly commentsQueryRepository: CommentsQueryRepository) {}
+  constructor(private readonly commentsSqlQueryRepository: CommentsSqlQueryRepository) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request>()
-    const comment = await this.commentsQueryRepository.getCommentById(req.params.commentId)
+    const comment = await this.commentsSqlQueryRepository.getCommentById(req.params.commentId, req.user?.id)
 
     if (!comment) {
       throw new NotFoundException()

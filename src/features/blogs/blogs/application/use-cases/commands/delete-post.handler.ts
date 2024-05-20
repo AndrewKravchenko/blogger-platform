@@ -1,17 +1,20 @@
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
-import { PostsRepository } from '../../../infrastructure/posts.repository'
+import { PostsSqlRepository } from '../../../../posts/infrastructure/posts.sql-repository'
 
 export class DeletePostCommand {
-  constructor(public postId: string) {}
+  constructor(
+    public blogId: string,
+    public postId: string,
+  ) {}
 }
 
 @CommandHandler(DeletePostCommand)
 export class DeletePostHandler implements ICommandHandler<DeletePostCommand, InterlayerResult> {
-  constructor(private readonly postsRepository: PostsRepository) {}
+  constructor(private readonly postsSqlRepository: PostsSqlRepository) {}
 
-  async execute({ postId }: DeletePostCommand): Promise<InterlayerResult> {
-    const isDeleted = await this.postsRepository.deletePostById(postId)
+  async execute({ postId, blogId }: DeletePostCommand): Promise<InterlayerResult> {
+    const isDeleted = await this.postsSqlRepository.deletePostById(postId, blogId)
 
     if (isDeleted) {
       return InterlayerResult.Ok()

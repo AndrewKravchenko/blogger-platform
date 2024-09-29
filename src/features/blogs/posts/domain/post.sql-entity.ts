@@ -1,4 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
+import { Column, Entity, ManyToOne, OneToMany } from 'typeorm'
+import { BaseEntity } from '../../../../base/entities/base.entity'
+import { Blog } from '../../blogs/domain/blog.sql-entity'
+import { Comment } from '../../comments/domain/comment.sql-entity'
 
 export type CreatePostModel = {
   title: string
@@ -7,11 +10,8 @@ export type CreatePostModel = {
   blogId: string
 }
 
-@Entity()
-export class Post {
-  @PrimaryGeneratedColumn('uuid')
-  id: string
-
+@Entity({ name: 'Post' })
+export class Post extends BaseEntity<Post> {
   @Column({ length: 30 })
   title: string
 
@@ -30,16 +30,9 @@ export class Post {
   @Column({ default: 0 })
   dislikesCount: number
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt: Date
+  @OneToMany(() => Comment, (comment) => comment.post)
+  comments: Comment[]
 
-  @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-  updatedAt: Date
-
-  constructor({ title, shortDescription, content, blogId }: CreatePostModel) {
-    this.title = title
-    this.shortDescription = shortDescription
-    this.content = content
-    this.blogId = blogId
-  }
+  @ManyToOne(() => Blog, (blog) => blog.posts, { onDelete: 'CASCADE' })
+  blog: Blog
 }

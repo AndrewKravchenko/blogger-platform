@@ -1,51 +1,15 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm'
-import { v4 as uuidv4 } from 'uuid'
+import { Column, Entity, OneToMany, OneToOne, Unique } from 'typeorm'
+import { BaseEntity } from '../../../base/entities/base.entity'
+import { Session } from '../../sessions/domain/session.sql-entity'
+import { EmailConfirmation } from './email-confirmation.sql-entity'
 
-@Entity()
-export class EmailConfirmation {
-  @PrimaryColumn({ type: 'uuid' })
-  userId: string
-
-  @Column()
-  confirmationCode: string
-
-  @Column({ type: 'timestamp' })
-  expirationDate: Date
-
-  @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt: Date
-
-  @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-  updatedAt: Date
-}
-
-@Entity()
-export class PasswordRecovery {
-  @PrimaryColumn({ type: 'uuid' })
-  userId: string
-
-  @Column()
-  code: string
-
-  @Column({ type: 'timestamp' })
-  expirationDate: Date
-
-  @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt: Date
-
-  @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-  updatedAt: Date
-}
-
-@Entity()
-export class User {
-  @PrimaryColumn({ type: 'uuid', default: () => uuidv4() })
-  id: string
-
-  @Column()
+@Entity({ name: 'User' })
+@Unique(['login', 'email'])
+export class User extends BaseEntity<User> {
+  @Column({ collation: 'C' })
   login: string
 
-  @Column()
+  @Column({ collation: 'C' })
   email: string
 
   @Column()
@@ -60,20 +24,9 @@ export class User {
   @Column()
   isConfirmed: boolean
 
-  @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt: Date
+  @OneToMany(() => Session, (session) => session.user)
+  sessions: Session[]
 
-  @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-  updatedAt: Date
-
-  constructor(user: CreateUserModel) {
-    this.login = user.login
-    this.email = user.email
-    this.password = user.password
-    this.passwordSalt = user.passwordSalt
-    this.isConfirmed = user.isConfirmed
-    this.isDeleted = user.isDeleted
-  }
+  @OneToOne(() => EmailConfirmation, (emailConfirmation) => emailConfirmation.user)
+  emailConfirmation: EmailConfirmation
 }
-
-export type CreateUserModel = Omit<User, 'id' | 'createdAt' | 'updatedAt'>

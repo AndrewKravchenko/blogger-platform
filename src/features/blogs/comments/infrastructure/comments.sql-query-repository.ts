@@ -3,11 +3,16 @@ import { CommentOutputMapper, CommentOutputModel } from '../api/models/output/co
 import { QueryPostCommentsModel } from '../../posts/api/models/input/query-post.input.model'
 import { paginationSkip } from '../../../../infrastructure/utils/queryParams'
 import { PaginatedResponse } from '../../../../common/models/common.model'
-import { DataSource } from 'typeorm'
+import { Repository } from 'typeorm'
+import { Comment } from '../domain/comment.sql-entity'
+import { InjectRepository } from '@nestjs/typeorm'
 
 @Injectable()
 export class CommentsSqlQueryRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(Comment)
+    private readonly commentsRepository: Repository<Comment>,
+  ) {}
 
   async getPostComments(
     query: QueryPostCommentsModel,
@@ -15,55 +20,59 @@ export class CommentsSqlQueryRepository {
     userId?: string,
   ): Promise<PaginatedResponse<CommentOutputModel>> {
     const { sortBy, sortDirection, pageNumber, pageSize } = query
-    const queryComments = `
-      SELECT c.*, (
-        SELECT "login"
-        FROM "User"
-        WHERE id = c."userId"
-        LIMIT 1
-      ),
-      (
-        SELECT "myStatus"
-        FROM "Like"
-        WHERE "commentId" = c."id" AND "userId" = $4
-        LIMIT 1
-      ) AS "myStatus"
-      FROM "Comment" c
-      WHERE "postId" = $1
-      ORDER BY "${sortBy}" ${sortDirection}
-      LIMIT $2
-      OFFSET $3
-    `
-    const totalCountQuery = `
-      SELECT COUNT(*)
-      FROM "Comment"
-      WHERE "postId" = $1
-    `
-    const params = [postId, pageSize, paginationSkip(pageNumber, pageSize), userId]
+    const comments = await this.commentsRepository
+      .createQueryBuilder('c')
+      .select('*')
+      .addSelect((subQuery) => {
+        return subQuery.select('u.login', 'login').from('User', 'u').where('u.id = c."userId"').limit(1)
+      })
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('l."myStatus"')
+          .from('Like', 'l')
+          .where('l."userId" = :userId', { userId })
+          .andWhere('l."commentId" = c.id')
+          .limit(1)
+      })
+      .where('c.postId = :postId', { postId })
+      .orderBy(`c.${sortBy}`, sortDirection.toUpperCase() as 'ASC' | 'DESC')
+      .take(pageSize)
+      .skip(paginationSkip(pageNumber, pageSize))
+      .getRawMany()
 
-    const comments = await this.dataSource.query(queryComments, params)
+    const totalCount = await this.commentsRepository
+      .createQueryBuilder('c')
+      .where('c.postId = :postId', { postId })
+      .getCount()
 
-    const [{ count }] = await this.dataSource.query(totalCountQuery, [postId])
-    const pagesCount = Math.ceil(count / pageSize)
+    const pagesCount = Math.ceil(totalCount / pageSize)
 
     return {
       pagesCount,
       page: pageNumber,
       pageSize,
-      totalCount: +count,
+      totalCount,
       items: comments.map(CommentOutputMapper),
     }
   }
 
   async getCommentById(commentId: string, userId?: string): Promise<CommentOutputModel | null> {
-    const query = `
-      SELECT c.*, u.login, l."myStatus"          
-      FROM "Comment" c
-      JOIN "User" u ON u.id = c."userId"
-      LEFT JOIN "Like" l ON l."userId" = $2 AND l."commentId" = c.id
-      WHERE c.id = $1
-    `
-    const [comment] = await this.dataSource.query(query, [commentId, userId])
+    const comment = await this.commentsRepository
+      .createQueryBuilder('c')
+      .select('*')
+      .addSelect((subQuery) => {
+        return subQuery.select('u.login', 'login').from('User', 'u').where('u.id = c."userId"').limit(1)
+      })
+      .addSelect((subQuery) => {
+        return subQuery
+          .select('l."myStatus"')
+          .from('Like', 'l')
+          .where('l."userId" = :userId', { userId })
+          .andWhere('l."commentId" = c.id')
+          .limit(1)
+      })
+      .where('c.id = :commentId', { commentId })
+      .getRawOne()
 
     if (!comment) {
       return null

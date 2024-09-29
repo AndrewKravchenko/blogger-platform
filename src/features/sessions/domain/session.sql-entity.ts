@@ -1,6 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm'
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
+import { User } from '../../users/domain/user.sql-entity'
 
-@Entity()
+@Entity({ name: 'Session' })
 export class Session {
   @PrimaryGeneratedColumn('uuid')
   deviceId: string
@@ -20,25 +21,16 @@ export class Session {
   @Column({ type: 'timestamp' })
   expirationAt: Date
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @CreateDateColumn()
   createdAt: Date
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn()
   updatedAt: Date
 
-  constructor({
-    ip,
-    userId,
-    deviceId,
-    deviceName,
-    lastActiveDate,
-    expirationAt,
-  }: Omit<Session, 'createdAt' | 'updatedAt'>) {
-    this.ip = ip
-    this.userId = userId
-    this.deviceId = deviceId
-    this.deviceName = deviceName
-    this.lastActiveDate = lastActiveDate
-    this.expirationAt = expirationAt
+  @ManyToOne(() => User, (user) => user.sessions, { onDelete: 'CASCADE' })
+  user: User
+
+  constructor(entity: Partial<Session>) {
+    Object.assign(this, entity)
   }
 }

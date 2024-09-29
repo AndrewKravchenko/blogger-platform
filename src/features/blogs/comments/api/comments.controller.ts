@@ -11,7 +11,6 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common'
-import { InputCommentId } from './models/input/comment.input.model'
 import { Request } from 'express'
 import { CommentOutputModel } from './models/output/comment.output.model'
 import { UpdateCommentInputModel, UpdateCommentLikeStatusInputModel } from './models/input/update-comment.input.model'

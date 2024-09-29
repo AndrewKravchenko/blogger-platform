@@ -31,7 +31,6 @@ export class UpdatePostLikeStatusHandler implements ICommandHandler<UpdatePostLi
     }
 
     const myStatus = await this.likesQueryRepository.getPostLikeStatus(postId, userId)
-
     if (myStatus === newLikeStatus) {
       return InterlayerResult.Ok()
     }
@@ -52,12 +51,16 @@ export class UpdatePostLikeStatusHandler implements ICommandHandler<UpdatePostLi
     currentLikeStatus: LikeStatus,
     newLikeStatus: LikeStatus,
   ): Promise<boolean> {
-    const likesCountUpdate = this.likesService.calculateLikesCountChanges(currentLikeStatus, newLikeStatus)
+    const likeCountChanges = this.likesService.calculateLikesCountChanges(currentLikeStatus, newLikeStatus)
 
-    if (!likesCountUpdate) {
+    if (!likeCountChanges) {
       return true
     }
 
-    return await this.postsSqlRepository.updateLikesCount(postId, likesCountUpdate)
+    return await this.postsSqlRepository.updateLikesCount(
+      postId,
+      likeCountChanges.likesCount,
+      likeCountChanges.dislikesCount,
+    )
   }
 }

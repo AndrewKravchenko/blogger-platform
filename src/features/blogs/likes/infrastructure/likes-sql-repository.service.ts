@@ -1,51 +1,46 @@
 import { Injectable } from '@nestjs/common'
-import { Like, LikeStatus } from '../domain/like.entity'
-import { DataSource } from 'typeorm'
+import { Like, LikeStatus } from '../domain/like.sql-entity'
+import { Repository } from 'typeorm'
+import { InjectRepository } from '@nestjs/typeorm'
 
 @Injectable()
 export class LikesSqlRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(Like)
+    private readonly likesRepository: Repository<Like>,
+  ) {}
 
-  async createPostStatusLike({ postId, userId, myStatus }: Like): Promise<void> {
-    const query = `
-      INSERT INTO "Like"("postId", "userId", "myStatus")
-      VALUES ($1, $2, $3);
-    `
-    const params = [postId, userId, myStatus]
-    await this.dataSource.query(query, params)
+  async createPostStatusLike(likeModel: Like): Promise<void> {
+    await this.likesRepository.createQueryBuilder().insert().values(likeModel).execute()
   }
 
-  async createCommentStatusLike({ commentId, userId, myStatus }: Like): Promise<void> {
-    const query = `
-      INSERT INTO "Like"("commentId", "userId", "myStatus")
-      VALUES ($1, $2, $3)
-    `
-    const params = [commentId, userId, myStatus]
-
-    await this.dataSource.query(query, params)
+  async createCommentStatusLike(likeModel: Like): Promise<void> {
+    await this.likesRepository
+      .createQueryBuilder()
+      .insert()
+      .values({ userId: likeModel.userId, commentId: likeModel.commentId, myStatus: likeModel.myStatus })
+      .execute()
   }
 
   async updateCommentLikeStatus(commentId: string, userId: string, myStatus: LikeStatus): Promise<boolean> {
-    const query = `
-      UPDATE "Like"
-      SET "myStatus" = $1
-      WHERE "commentId" = $2 AND "userId" = $3
-    `
-    const params = [myStatus, commentId, userId]
-
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
+    const { affected } = await this.likesRepository
+      .createQueryBuilder()
+      .update()
+      .set({ myStatus })
+      .where('"commentId" = :commentId', { commentId })
+      .andWhere('"userId" = :userId', { userId })
+      .execute()
+    return !!affected
   }
 
   async updatePostLikeStatus(postId: string, userId: string, myStatus: LikeStatus): Promise<boolean> {
-    const query = `
-      UPDATE "Like"
-      SET "myStatus" = $1
-      WHERE "postId" = $2 AND "userId" = $3
-    `
-    const params = [myStatus, postId, userId]
-
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
+    const { affected } = await this.likesRepository
+      .createQueryBuilder()
+      .update()
+      .set({ myStatus })
+      .where('"postId" = :postId', { postId })
+      .andWhere('"userId" = :userId', { userId })
+      .execute()
+    return !!affected
   }
 }

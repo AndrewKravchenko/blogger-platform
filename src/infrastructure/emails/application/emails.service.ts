@@ -29,12 +29,16 @@ export class EmailsService {
   async sendEmail(config: EmailConfig): Promise<void> {
     const html = await this.renderTemplate(config.templatePath, config.templateData)
 
-    await this.mailerService.sendMail({
-      from: `"Andrew" <${process.env.EMAIL_USER}>`,
-      to: config.email,
-      subject: config.subject,
-      html,
-    })
+    await this.mailerService
+      .sendMail({
+        from: `"Andrew" <${process.env.EMAIL_USER}>`,
+        to: config.email,
+        subject: config.subject,
+        html,
+      })
+      .catch((error) => {
+        console.log('error', error)
+      })
   }
 
   async sendRegistrationConfirmationEmail(email: string, confirmationCode: string): Promise<void> {

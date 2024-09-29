@@ -40,6 +40,7 @@ export class CreateCommentToPostHandler
       return InterlayerResult.Error(InterlayerResultCode.Unauthorized)
     }
     const comment = await this.commentsSqlRepository.createCommentToPost(postId, userId, content)
+    comment.commentatorInfo.userLogin = user.login
 
     return InterlayerResult.Ok(comment)
   }

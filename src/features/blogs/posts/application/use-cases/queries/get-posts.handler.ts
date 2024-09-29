@@ -30,8 +30,6 @@ export class GetPostsHandler implements IQueryHandler<GetPostsQueryPayload> {
   async execute(queryPayload: GetPostsQueryPayload): Promise<PaginatedResponse<PostOutputModel>> {
     const { userId, ...postQuery } = queryPayload
 
-    const paginatedPosts = await this.postsSqlQueryRepository.getPosts(postQuery, userId)
-    // await Promise.all(paginatedPosts.items.map((post) => this.postsService.extendPostLikesInfo(post, userId)))
-    return paginatedPosts
+    return await this.postsSqlQueryRepository.getPosts(postQuery, userId)
   }
 }

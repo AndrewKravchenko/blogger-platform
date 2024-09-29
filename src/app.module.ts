@@ -1,10 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common'
-import { MongooseModule } from '@nestjs/mongoose'
-import { User, UserSchema } from './features/users/domain/user.entity'
+// import { MongooseModule } from '@nestjs/mongoose'
 import { LoggerMiddleware } from './infrastructure/middlewares/logger.middleware'
 import { ConfigModule, ConfigService } from '@nestjs/config'
-import { Like, LikeSchema } from './features/blogs/likes/domain/like.entity'
-import { Session, SessionSchema } from './features/sessions/domain/session.entity'
 import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter'
 import { MailerModule } from '@nestjs-modules/mailer'
 import { DecodeUserIdMiddleware } from './infrastructure/middlewares/user-id .middleware'
@@ -16,9 +13,6 @@ import { EmailModule } from './infrastructure/emails/email.module'
 import { UsersModule } from './features/users/users.module'
 import { AuthModule } from './features/auth/auth.module'
 import { SessionsModule } from './features/sessions/sessions.module'
-import { Blog, BlogSchema } from './features/blogs/blogs/domain/blog.entity'
-import { Post, PostSchema } from './features/blogs/posts/domain/post.entity'
-import { Comment, CommentSchema } from './features/blogs/comments/domain/comment.entity'
 import { BlogsModule } from './features/blogs/blogs.module'
 import { TestingModule } from './features/testing/testing.module'
 import { APP_GUARD } from '@nestjs/core'
@@ -52,36 +46,31 @@ import { TypeOrmModule } from '@nestjs/typeorm'
           username: SQL_USER_NAME,
           password: SQL_PASSWORD,
           database: SQL_DATABASE_NAME,
+          autoLoadEntities: true,
+          logging: ['query'],
+          // synchronize: true,
           synchronize: false,
         }
       },
       inject: [ConfigService],
     }),
-    MongooseModule.forRootAsync({
-      useFactory: (configService: ConfigService<Configuration, true>) => {
-        const environmentSettings = configService.get('environmentSettings', {
-          infer: true,
-        })
-        const databaseSettings = configService.get('databaseSettings', {
-          infer: true,
-        })
-
-        const uri = environmentSettings.isTesting ? databaseSettings.MONGO_TEST_URI : databaseSettings.MONGO_URI
-
-        return {
-          uri,
-        }
-      },
-      inject: [ConfigService],
-    }),
-    MongooseModule.forFeature([
-      { name: User.name, schema: UserSchema },
-      { name: Blog.name, schema: BlogSchema },
-      { name: Post.name, schema: PostSchema },
-      { name: Like.name, schema: LikeSchema },
-      { name: Comment.name, schema: CommentSchema },
-      { name: Session.name, schema: SessionSchema },
-    ]),
+    // MongooseModule.forRootAsync({
+    //   useFactory: (configService: ConfigService<Configuration, true>) => {
+    //     const environmentSettings = configService.get('environmentSettings', {
+    //       infer: true,
+    //     })
+    //     const databaseSettings = configService.get('databaseSettings', {
+    //       infer: true,
+    //     })
+    //
+    //     const uri = environmentSettings.isTesting ? databaseSettings.MONGO_TEST_URI : databaseSettings.MONGO_URI
+    //
+    //     return {
+    //       uri,
+    //     }
+    //   },
+    //   inject: [ConfigService],
+    // }),
     MailerModule.forRootAsync({
       useFactory: (configService: ConfigService<Configuration, true>) => {
         const { EMAIL_USER, EMAIL_PASSWORD } = configService.get('emailSettings', { infer: true })

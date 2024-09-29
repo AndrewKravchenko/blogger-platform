@@ -1,38 +1,15 @@
 import { Injectable } from '@nestjs/common'
-import { LikesSqlQueryRepository } from '../infrastructure/likes.sql-query-repository'
-import { NewestLikeOutputModel } from '../models/output/like.output.model'
-import { Like, LikeStatus } from '../domain/like.entity'
+import { Like, LikeStatus } from '../domain/like.sql-entity'
 import { LikesSqlRepository } from '../infrastructure/likes-sql-repository.service'
-import { UsersSqlQueryRepository } from '../../../users/infrastructure/users.sql-query-repository'
 
-export type UpdateLikesCount = {
-  likesCount?: number
-  dislikesCount?: number
+export type LikeCountChanges = {
+  likesCount: number
+  dislikesCount: number
 }
 
 @Injectable()
 export class LikesService {
-  constructor(
-    private readonly likesRepository: LikesSqlRepository,
-    private readonly likesQueryRepository: LikesSqlQueryRepository,
-    private readonly usersSqlQueryRepository: UsersSqlQueryRepository,
-  ) {}
-
-  // async getPostNewestLikes(postId: string): Promise<NewestLikeOutputModel[] | null> {
-  //   const newestLikes = await this.likesQueryRepository.getPostNewestLikes(postId)
-  //
-  //   if (!newestLikes) {
-  //     return null
-  //   }
-  //
-  //   return Promise.all(
-  //     newestLikes.map(async ({ userId, createdAt }) => {
-  //       const user = await this.usersSqlQueryRepository.getUserById(userId)
-  //
-  //       return new NewestLikeOutputModel(user?.login, userId, createdAt)
-  //     }),
-  //   )
-  // }
+  constructor(private readonly likesRepository: LikesSqlRepository) {}
 
   async createPostLikeStatus(postId: string, userId: string, myStatus: LikeStatus): Promise<void> {
     const newLike = new Like({
@@ -62,34 +39,37 @@ export class LikesService {
     return await this.likesRepository.updatePostLikeStatus(postId, userId, newLikeStatus)
   }
 
-  calculateLikesCountChanges(currentLikeStatus: LikeStatus, newLikeStatus: LikeStatus): UpdateLikesCount | null {
-    const likeCountUpdate: UpdateLikesCount = {}
-    console.log(`${currentLikeStatus}-${newLikeStatus}`)
+  calculateLikesCountChanges(currentLikeStatus: LikeStatus, newLikeStatus: LikeStatus): LikeCountChanges | null {
+    const likeCountChanges: LikeCountChanges = {
+      likesCount: 0,
+      dislikesCount: 0,
+    }
+
     switch (`${currentLikeStatus}-${newLikeStatus}`) {
       case `${LikeStatus.None}-${LikeStatus.Like}`:
-        likeCountUpdate.likesCount = 1
+        likeCountChanges.likesCount = 1
         break
       case `${LikeStatus.None}-${LikeStatus.Dislike}`:
-        likeCountUpdate.dislikesCount = 1
+        likeCountChanges.dislikesCount = 1
         break
       case `${LikeStatus.Like}-${LikeStatus.Dislike}`:
-        likeCountUpdate.likesCount = -1
-        likeCountUpdate.dislikesCount = 1
+        likeCountChanges.likesCount = -1
+        likeCountChanges.dislikesCount = 1
         break
       case `${LikeStatus.Like}-${LikeStatus.None}`:
-        likeCountUpdate.likesCount = -1
+        likeCountChanges.likesCount = -1
         break
       case `${LikeStatus.Dislike}-${LikeStatus.Like}`:
-        likeCountUpdate.dislikesCount = -1
-        likeCountUpdate.likesCount = 1
+        likeCountChanges.dislikesCount = -1
+        likeCountChanges.likesCount = 1
         break
       case `${LikeStatus.Dislike}-${LikeStatus.None}`:
-        likeCountUpdate.dislikesCount = -1
+        likeCountChanges.dislikesCount = -1
         break
       default:
         return null
     }
 
-    return likeCountUpdate
+    return likeCountChanges
   }
 }

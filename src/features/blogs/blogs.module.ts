@@ -3,18 +3,12 @@ import { CommentsController } from './comments/api/comments.controller'
 import { PostsController } from './posts/api/posts.controller'
 import { BlogsController } from './blogs/api/blogs.controller'
 import { PostsService } from './posts/application/posts.service'
-import { BlogsQueryRepository } from './blogs/infrastructure/blogs.query-repository'
-import { BlogsRepository } from './blogs/infrastructure/blogs.repository'
-import { MongooseModule } from '@nestjs/mongoose'
-import { Blog, BlogSchema } from './blogs/domain/blog.entity'
-import { Post, PostSchema } from './posts/domain/post.entity'
-import { Comment, CommentSchema } from './comments/domain/comment.entity'
-import { Like, LikeSchema } from './likes/domain/like.entity'
+import { Blog } from './blogs/domain/blog.sql-entity'
+import { Post } from './posts/domain/post.sql-entity'
+import { Comment } from './comments/domain/comment.sql-entity'
 import { LikesSqlQueryRepository } from './likes/infrastructure/likes.sql-query-repository'
 import { LikesSqlRepository } from './likes/infrastructure/likes-sql-repository.service'
 import { LikesService } from './likes/application/likes.service'
-import { PostsRepository } from './posts/infrastructure/posts.repository'
-import { PostsQueryRepository } from './posts/infrastructure/posts.query-repository'
 import { UsersModule } from '../users/users.module'
 import { AuthModule } from '../auth/auth.module'
 import { GetPostsByBlogIdHandler } from './blogs/application/use-cases/queries/get-posts-by-blog-id.handler'
@@ -42,12 +36,12 @@ import { DeletePostHandler } from './blogs/application/use-cases/commands/delete
 import { UpdatePostHandler } from './blogs/application/use-cases/commands/update-post.handler'
 import { CommentsSqlQueryRepository } from './comments/infrastructure/comments.sql-query-repository'
 import { CommentsSqlRepository } from './comments/infrastructure/comments.sql-repository'
+import { TypeOrmModule } from '@nestjs/typeorm'
+import { Like } from './likes/domain/like.sql-entity'
 
 const blogsProviders: Provider[] = [
   BlogsSqlRepository,
   BlogsSqlQueryRepository,
-  BlogsQueryRepository,
-  BlogsRepository,
   GetPostsByBlogIdHandler,
   CreateBlogHandler,
   CreatePostToBlogHandler,
@@ -61,8 +55,6 @@ const blogsProviders: Provider[] = [
 const postsProviders: Provider[] = [
   PostsSqlRepository,
   PostsSqlQueryRepository,
-  PostsRepository,
-  PostsQueryRepository,
   PostsService,
   GetPostsHandler,
   GetPostByIdHandler,
@@ -86,12 +78,13 @@ const likesProviders: Provider[] = [LikesSqlQueryRepository, LikesSqlRepository,
 
 @Module({
   imports: [
-    MongooseModule.forFeature([
-      { name: Blog.name, schema: BlogSchema },
-      { name: Post.name, schema: PostSchema },
-      { name: Like.name, schema: LikeSchema },
-      { name: Comment.name, schema: CommentSchema },
-    ]),
+    TypeOrmModule.forFeature([Blog, Post, Comment, Like]),
+    // MongooseModule.forFeature([
+    //   { name: Blog.name, schema: BlogSchema },
+    //   { name: Post.name, schema: PostSchema },
+    //   { name: Like.name, schema: LikeSchema },
+    //   { name: Comment.name, schema: CommentSchema },
+    // ]),
     AuthModule,
     UsersModule,
   ],

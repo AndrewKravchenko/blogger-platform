@@ -3,12 +3,16 @@ import { BlogOutputMapper, BlogOutputModel } from '../api/models/output/blog.out
 import { QueryBlogInputModel } from '../api/models/input/query-blog.input.model'
 import { paginationSkip } from '../../../../infrastructure/utils/queryParams'
 import { PaginatedResponse } from '../../../../common/models/common.model'
-import { InjectDataSource } from '@nestjs/typeorm'
-import { DataSource } from 'typeorm'
+import { InjectRepository } from '@nestjs/typeorm'
+import { Repository } from 'typeorm'
+import { Blog } from '../domain/blog.sql-entity'
 
 @Injectable()
 export class BlogsSqlQueryRepository {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(Blog)
+    private readonly blogsRepository: Repository<Blog>,
+  ) {}
 
   async getBlogs({
     sortBy,
@@ -17,51 +21,31 @@ export class BlogsSqlQueryRepository {
     pageSize,
     searchNameTerm,
   }: QueryBlogInputModel): Promise<PaginatedResponse<BlogOutputModel>> {
-    let blogsQuery = `
-      SELECT * FROM "Blog"
-    `
-    let totalCountQuery = `
-      SELECT COUNT(*) FROM "Blog"
-    `
-    const searchParams: any[] = []
+    const queryBuilder = this.blogsRepository.createQueryBuilder('b')
 
     if (searchNameTerm) {
-      blogsQuery += ` WHERE name ILIKE $${searchParams.length + 1}`
-      totalCountQuery += ` WHERE name ILIKE $${searchParams.length + 1}`
-      searchParams.push(`%${searchNameTerm}%`)
+      queryBuilder.where('b.name ILIKE :searchTerm', { searchTerm: `%${searchNameTerm}%` })
     }
 
-    blogsQuery += `
-      ORDER BY "${sortBy}" ${sortDirection}
-      LIMIT $${searchParams.length + 1}
-      OFFSET $${searchParams.length + 2}
-    `
-    const blogs = await this.dataSource.query(blogsQuery, [
-      ...searchParams,
-      pageSize,
-      paginationSkip(pageNumber, pageSize),
-    ])
+    queryBuilder
+      .orderBy(`b.${sortBy}`, sortDirection.toUpperCase() as 'ASC' | 'DESC')
+      .take(pageSize)
+      .skip(paginationSkip(pageNumber, pageSize))
 
-    const [{ count }] = await this.dataSource.query(totalCountQuery, searchParams)
-    const pagesCount = Math.ceil(count / pageSize)
+    const [blogs, totalCount] = await queryBuilder.getManyAndCount()
+    const pagesCount = Math.ceil(totalCount / pageSize)
 
     return {
       pagesCount,
       page: pageNumber,
       pageSize,
-      totalCount: +count,
+      totalCount,
       items: blogs.map(BlogOutputMapper),
     }
   }
 
   async getBlogById(blogId: string): Promise<BlogOutputModel | null> {
-    const query = `
-      SELECT *
-      FROM "Blog"
-      WHERE id = $1`
-    const params = [blogId]
-
-    const [blog] = await this.dataSource.query(query, params)
+    const blog = await this.blogsRepository.createQueryBuilder().where('id = :id', { id: blogId }).getOne()
 
     if (!blog) {
       return null

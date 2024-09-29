@@ -9,24 +9,29 @@ import {
   UserOutputMapper,
   UserOutputModel,
 } from '../api/models/output/user.output.model'
-import { DataSource } from 'typeorm'
-import { InjectDataSource } from '@nestjs/typeorm'
+import { Repository } from 'typeorm'
+import { InjectRepository } from '@nestjs/typeorm'
 import { PasswordHashResult } from '../application/users.service'
-import { CreateUserModel } from '../domain/user.sql-entity'
+import { User } from '../domain/user.sql-entity'
+import { EmailConfirmation } from '../domain/email-confirmation.sql-entity'
+import { PasswordRecovery } from '../domain/password-recovery.sql-entity'
 
 @Injectable()
 export class UsersSqlRepository {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
+    @InjectRepository(EmailConfirmation)
+    private readonly emailConfirmationRepository: Repository<EmailConfirmation>,
+    @InjectRepository(PasswordRecovery)
+    private readonly passwordRecoveryRepository: Repository<PasswordRecovery>,
+  ) {}
 
   async getEmailConfirmation(confirmationCode: string): Promise<EmailConfirmationWithStatusOutputModel | null> {
-    const query = `
-      SELECT "EmailConfirmation".*, "User"."isConfirmed"
-      FROM "EmailConfirmation"
-      JOIN "User" ON "EmailConfirmation"."userId" = "User"."id"
-      WHERE "confirmationCode" = $1
-    `
-    const params = [confirmationCode]
-    const [emailConfirmation] = await this.dataSource.query(query, params)
+    const emailConfirmation = await this.emailConfirmationRepository.findOne({
+      where: { confirmationCode },
+      relations: ['user'],
+    })
 
     if (!emailConfirmation) {
       return null
@@ -36,13 +41,7 @@ export class UsersSqlRepository {
   }
 
   async getPasswordRecoveryById(userId: string): Promise<PasswordRecoveryOutputModel | null> {
-    const query = `
-      SELECT *
-      FROM "PasswordRecovery"
-      WHERE "userId" = $1
-    `
-    const params = [userId]
-    const [passwordRecovery] = await this.dataSource.query(query, params)
+    const passwordRecovery = await this.passwordRecoveryRepository.findOneBy({ userId })
 
     if (!passwordRecovery) {
       return null
@@ -51,14 +50,8 @@ export class UsersSqlRepository {
     return PasswordRecoveryOutputMapper(passwordRecovery)
   }
 
-  async getPasswordRecoveryByCode(confirmationCode: string): Promise<PasswordRecoveryOutputModel | null> {
-    const query = `
-      SELECT *
-      FROM "PasswordRecovery"
-      WHERE "code" = $1
-    `
-    const params = [confirmationCode]
-    const [passwordRecovery] = await this.dataSource.query(query, params)
+  async getPasswordRecoveryByCode(code: string): Promise<PasswordRecoveryOutputModel | null> {
+    const passwordRecovery = await this.passwordRecoveryRepository.findOneBy({ code })
 
     if (!passwordRecovery) {
       return null
@@ -68,14 +61,7 @@ export class UsersSqlRepository {
   }
 
   async getUserByLoginOrEmail(loginOrEmail: string, email?: string): Promise<Nullable<FullUserOutputModel>> {
-    const query = `
-      SELECT *
-      FROM "User"
-      WHERE login ILIKE $1 OR email ILIKE $2
-    `
-    const params = [loginOrEmail, email || loginOrEmail]
-
-    const [user] = await this.dataSource.query(query, params)
+    const user = await this.usersRepository.findOneBy([{ login: loginOrEmail }, { email: email || loginOrEmail }])
 
     if (!user) {
       return null
@@ -84,109 +70,53 @@ export class UsersSqlRepository {
     return FullUserOutputMapper(user)
   }
 
-  async createEmailConfirmation(userId: string, confirmationCode: string, expirationDate: Date): Promise<void> {
-    const emailConfirmationQuery = `
-        INSERT INTO "EmailConfirmation"("userId", "confirmationCode", "expirationDate")
-        VALUES ($1, $2, $3)
-    `
-    const params = [userId, confirmationCode, expirationDate]
-    await this.dataSource.query(emailConfirmationQuery, params)
+  async createEmailConfirmation(emailConfirmation: EmailConfirmation): Promise<void> {
+    await this.emailConfirmationRepository.save(emailConfirmation)
   }
 
-  async setUserIdToEmailConfirmation(emailConfirmationId: string, userId: string): Promise<void> {
-    const query = `
-    UPDATE "EmailConfirmation"
-    SET "userId" = $1
-    WHERE id = $2
-    `
-    const params = [userId, emailConfirmationId]
-    await this.dataSource.query(query, params)
-  }
-
-  async create({
-    login,
-    email,
-    password,
-    passwordSalt,
-    isDeleted,
-    isConfirmed,
-  }: CreateUserModel): Promise<UserOutputModel> {
-    const query = `
-      INSERT INTO "User"("login", "email", "password", "passwordSalt", "isDeleted", "isConfirmed")
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *
-    `
-    const params = [login, email, password, passwordSalt, isDeleted, isConfirmed]
-
-    const [createdUser] = await this.dataSource.query(query, params)
+  async create(user: User): Promise<UserOutputModel> {
+    const createdUser = await this.usersRepository.save(user)
     return UserOutputMapper(createdUser)
   }
 
-  async createPasswordRecovery(userId: string, code: string, expirationDate: Date): Promise<void> {
-    const query = `
-        INSERT INTO "PasswordRecovery"("userId", "code", "expirationDate")
-        VALUES ($1, $2, $3)
-    `
-    const params = [userId, code, expirationDate]
-    await this.dataSource.query(query, params)
+  async createPasswordRecovery(passwordRecovery: PasswordRecovery): Promise<void> {
+    await this.passwordRecoveryRepository.save(passwordRecovery)
   }
 
   async updateRecoveryCode(userId: string, code: string, expirationDate: Date): Promise<void> {
-    const query = `
-        UPDATE "PasswordRecovery"
-        SET "code" = $1, "expirationDate" = $2
-        WHERE "userId" = $3
-        VALUES ($1, $2, $3)
-    `
-    const params = [code, expirationDate, userId]
-    await this.dataSource.query(query, params)
+    await this.passwordRecoveryRepository.update(
+      { userId },
+      {
+        code,
+        expirationDate,
+      },
+    )
   }
 
   async markEmailConfirmed(userId: string): Promise<boolean> {
-    const query = `
-        UPDATE "User"
-        SET "isConfirmed" = true
-        WHERE id = $1
-    `
-    const params = [userId]
-
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
+    const { affected } = await this.usersRepository.update({ id: userId }, { isConfirmed: true })
+    return !!affected
   }
 
   async changeEmailConfirmationCode(userId: string, confirmationCode: string): Promise<boolean> {
-    const query = `
-        UPDATE "EmailConfirmation"
-        SET "confirmationCode" = $1
-        WHERE "userId" = $2
-    `
-    const params = [confirmationCode, userId]
-
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
+    const { affected } = await this.emailConfirmationRepository.update({ userId }, { confirmationCode })
+    return !!affected
   }
 
-  async changePassword(userId: string, passwordData: PasswordHashResult): Promise<boolean> {
-    const query = `
-        UPDATE "User"
-        SET "passwordSalt" = $1, "password" = $2
-        WHERE "id" = $3
-    `
-    const params = [passwordData.passwordSalt, passwordData.passwordHash, userId]
+  async changePassword(id: string, passwordData: PasswordHashResult): Promise<boolean> {
+    const { affected } = await this.usersRepository.update(
+      { id },
+      {
+        password: passwordData.passwordHash,
+        passwordSalt: passwordData.passwordSalt,
+      },
+    )
 
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
+    return !!affected
   }
 
-  async deleteById(userId: string): Promise<boolean> {
-    const query = `
-      UPDATE "User"
-      SET "isDeleted" = true
-      WHERE id = $1
-    `
-    const params = [userId]
-
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
+  async deleteById(id: string): Promise<boolean> {
+    const { affected } = await this.usersRepository.update({ id }, { isDeleted: true })
+    return !!affected
   }
 }

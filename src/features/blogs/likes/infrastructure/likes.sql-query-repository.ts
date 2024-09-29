@@ -1,31 +1,33 @@
 import { Injectable } from '@nestjs/common'
 import { LikeStatus } from '../domain/like.entity'
-import { PostLikeOutputMapper, PostLikeOutputModel } from '../models/output/like.output.model'
-import { DataSource } from 'typeorm'
+import { Repository } from 'typeorm'
+import { InjectRepository } from '@nestjs/typeorm'
+import { Like } from '../domain/like.sql-entity'
 
 @Injectable()
 export class LikesSqlQueryRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(Like)
+    private readonly likesRepository: Repository<Like>,
+  ) {}
 
   async getPostLikeStatus(postId: string, userId?: string): Promise<LikeStatus | null> {
     if (!userId) {
       return null
     }
 
-    const query = `
-      SELECT "myStatus"
-      FROM "Like"
-      WHERE "postId" = $1 AND "userId" = $2
-    `
-    const params = [postId, userId]
+    const like = await this.likesRepository
+      .createQueryBuilder()
+      .select()
+      .where('"postId" = :postId', { postId })
+      .andWhere('"userId" = :userId', { userId })
+      .getOne()
 
-    const [likeStatus] = await this.dataSource.query(query, params)
-
-    if (!likeStatus) {
+    if (!like) {
       return null
     }
 
-    return likeStatus.myStatus
+    return like.myStatus
   }
 
   async getCommentLikeStatus(commentId: string, userId?: string): Promise<LikeStatus | null> {
@@ -33,37 +35,17 @@ export class LikesSqlQueryRepository {
       return null
     }
 
-    const query = `
-      SELECT "myStatus"
-      FROM "Like"
-      WHERE "commentId" = $1 AND "userId" = $2
-    `
-    const params = [commentId, userId]
-
-    const [likeStatus] = await this.dataSource.query(query, params)
+    const likeStatus = await this.likesRepository
+      .createQueryBuilder()
+      .select()
+      .where('"commentId" = :commentId', { commentId })
+      .andWhere('"userId" = :userId', { userId })
+      .getOne()
 
     if (!likeStatus) {
       return null
     }
 
     return likeStatus.myStatus
-  }
-
-  async getPostNewestLikes(postId: string): Promise<PostLikeOutputModel[] | null> {
-    const query = `
-      SELECT *
-      FROM "Like"
-      WHERE "postId" = $1 AND "myStatus" = $2
-      ORDER BY "createdAt" ASC
-      LIMIT 3
-    `
-    const params = [postId, LikeStatus.Like]
-    const [newestLikes] = await this.dataSource.query(query, params)
-
-    if (!newestLikes) {
-      return null
-    }
-
-    return newestLikes.map(PostLikeOutputMapper)
   }
 }

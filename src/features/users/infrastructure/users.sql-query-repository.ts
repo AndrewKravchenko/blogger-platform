@@ -7,16 +7,22 @@ import {
   UserOutputMapper,
   UserOutputModel,
 } from '../api/models/output/user.output.model'
-import { InjectDataSource } from '@nestjs/typeorm'
-import { DataSource } from 'typeorm'
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
+import { DataSource, ILike, Repository } from 'typeorm'
 import { QueryUserModel } from '../api/models/input/query-user.input.model'
 import { PaginatedResponse } from '../../../common/models/common.model'
-import { paginationSkip } from '../../../infrastructure/utils/queryParams'
+import { User } from '../domain/user.sql-entity'
+import { FindManyOptions } from 'typeorm/find-options/FindManyOptions'
+import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere'
 
 @Injectable()
 export class UsersSqlQueryRepository {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
-
+  constructor(
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
+  ) {}
   async getMe(userId: string): Promise<Nullable<MeOutputModel>> {
     const query = `
       SELECT *
@@ -59,51 +65,33 @@ export class UsersSqlQueryRepository {
     searchLoginTerm,
     searchEmailTerm,
   }: QueryUserModel): Promise<PaginatedResponse<UserOutputModel>> {
-    let usersQuery = `
-      SELECT *
-      FROM "User"
-      WHERE "isDeleted" = false
-    `
-    let totalCountQuery = `
-      SELECT COUNT(*)
-      FROM public."User"
-      WHERE "isDeleted" = false
-    `
-
-    const searchParams: any[] = []
+    const where: FindOptionsWhere<User>[] = []
 
     if (searchLoginTerm) {
-      usersQuery += ` AND login ILIKE $${searchParams.length + 1}`
-      totalCountQuery += ` AND login ILIKE $${searchParams.length + 1}`
-      searchParams.push(`%${searchLoginTerm}%`)
+      where.push({ login: ILike(`%${searchLoginTerm}%`), isDeleted: false })
     }
-
     if (searchEmailTerm) {
-      usersQuery += ` ${searchLoginTerm ? 'OR' : 'AND'} email ILIKE $${searchParams.length + 1}`
-      totalCountQuery += ` ${searchLoginTerm ? 'OR' : 'AND'} email ILIKE $${searchParams.length + 1}`
-      searchParams.push(`%${searchEmailTerm}%`)
+      where.push({ email: ILike(`%${searchEmailTerm}%`), isDeleted: false })
+    }
+    if (!searchLoginTerm && !searchEmailTerm) {
+      where.push({ isDeleted: false })
     }
 
-    usersQuery += `
-      ORDER BY "${sortBy}" ${sortDirection}
-      LIMIT $${searchParams.length + 1}
-      OFFSET $${searchParams.length + 2}
-    `
+    const queryOptions: FindManyOptions<User> = {
+      where,
+      order: { [sortBy]: sortDirection },
+      take: pageSize,
+      skip: pageSize * (pageNumber - 1),
+    }
 
-    const users = await this.dataSource.query(usersQuery, [
-      ...searchParams,
-      pageSize,
-      paginationSkip(pageNumber, pageSize),
-    ])
-
-    const [{ count }] = await this.dataSource.query(totalCountQuery, searchParams)
-    const pagesCount = Math.ceil(count / pageSize)
+    const [users, totalCount] = await this.users.findAndCount(queryOptions)
+    const pagesCount = Math.ceil(totalCount / pageSize)
 
     return {
       pagesCount,
       page: pageNumber,
       pageSize,
-      totalCount: +count,
+      totalCount,
       items: users.map(UserOutputMapper),
     }
   }

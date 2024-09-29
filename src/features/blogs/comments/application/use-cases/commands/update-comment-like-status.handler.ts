@@ -54,16 +54,16 @@ export class UpdateCommentLikeStatusHandler
     currentLikeStatus: LikeStatus,
     newLikeStatus: LikeStatus,
   ): Promise<boolean> {
-    const likesCountUpdate = this.likesService.calculateLikesCountChanges(currentLikeStatus, newLikeStatus)
+    const likeCountChanges = this.likesService.calculateLikesCountChanges(currentLikeStatus, newLikeStatus)
 
-    if (!likesCountUpdate) {
+    if (!likeCountChanges) {
       return true
     }
 
     return await this.commentsSqlRepository.updateLikesCount(
       commentId,
-      likesCountUpdate.likesCount,
-      likesCountUpdate.dislikesCount,
+      likeCountChanges.likesCount,
+      likeCountChanges.dislikesCount,
     )
   }
 }

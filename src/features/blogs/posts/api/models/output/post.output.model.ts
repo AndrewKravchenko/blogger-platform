@@ -38,7 +38,7 @@ export class PostOutputModel {
     dislikesCount,
     newestLikes,
     createdAt,
-  }: PostOutputModelProps) {
+  }: Omit<PostOutputModelProps, 'blog' | 'comments'>) {
     this.id = id
     this.title = title
     this.shortDescription = shortDescription

@@ -107,8 +107,8 @@ export class AuthController {
   @UseGuards(ActiveSessionAuthGuard)
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async logout(@CurrentUser() { deviceId }: UserPayload, @Res({ passthrough: true }) res): Promise<void> {
-    await this.authService.logout(deviceId)
+  async logout(@CurrentUser() { userId, deviceId }: UserPayload, @Res({ passthrough: true }) res): Promise<void> {
+    await this.authService.logout(userId, deviceId)
     res.clearCookie('refreshToken')
   }
 }

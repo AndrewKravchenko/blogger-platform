@@ -1,11 +1,10 @@
-import { Column, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
+import { Column, Entity, OneToMany } from 'typeorm'
+import { Post } from '../../posts/domain/post.sql-entity'
+import { BaseEntity } from '../../../../base/entities/base.entity'
 
-@Entity()
-export class Blog {
-  @PrimaryGeneratedColumn('uuid')
-  id: string
-
-  @Column({ length: 15 })
+@Entity({ name: 'Blog' })
+export class Blog extends BaseEntity<Blog> {
+  @Column({ length: 15, collation: 'C' })
   name: string
 
   @Column({ length: 500 })
@@ -14,12 +13,9 @@ export class Blog {
   @Column({ length: 100 })
   websiteUrl: string
 
-  @Column()
+  @Column({ default: false })
   isMembership: boolean
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt: Date
-
-  @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-  updatedAt: Date
+  @OneToMany(() => Post, (post) => post.blog)
+  posts: Post[]
 }

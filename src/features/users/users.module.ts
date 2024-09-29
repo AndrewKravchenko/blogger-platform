@@ -1,17 +1,17 @@
 import { Module } from '@nestjs/common'
 import { UsersService } from './application/users.service'
-import { UsersQueryRepository } from './infrastructure/users.query-repository'
-import { UsersRepository } from './infrastructure/users.repository'
-import { MongooseModule } from '@nestjs/mongoose'
-import { User, UserSchema } from './domain/user.entity'
 import { UsersSqlRepository } from './infrastructure/users.sql-repository'
 import { UsersSqlQueryRepository } from './infrastructure/users.sql-query-repository'
 import { SuperAdminUsersController } from './api/super-admin-users.controller'
+import { TypeOrmModule } from '@nestjs/typeorm'
+import { User } from './domain/user.sql-entity'
+import { EmailConfirmation } from './domain/email-confirmation.sql-entity'
+import { PasswordRecovery } from './domain/password-recovery.sql-entity'
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: User.name, schema: UserSchema }])],
+  imports: [TypeOrmModule.forFeature([User, EmailConfirmation, PasswordRecovery])],
   controllers: [SuperAdminUsersController],
-  providers: [UsersSqlQueryRepository, UsersQueryRepository, UsersRepository, UsersSqlRepository, UsersService],
-  exports: [UsersQueryRepository, UsersSqlQueryRepository, UsersSqlRepository, UsersRepository, UsersService],
+  providers: [UsersSqlQueryRepository, UsersSqlRepository, UsersService],
+  exports: [UsersSqlQueryRepository, UsersSqlRepository, UsersService],
 })
 export class UsersModule {}

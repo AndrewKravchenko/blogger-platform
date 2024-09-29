@@ -94,9 +94,9 @@ export const EmailConfirmationWithStatusOutputMapper = ({
   userId,
   confirmationCode,
   expirationDate,
-  isConfirmed,
-}: EmailConfirmationWithStatusOutputModel): EmailConfirmationWithStatusOutputModel => {
-  return new EmailConfirmationWithStatusOutputModel(userId, confirmationCode, expirationDate, isConfirmed)
+  user,
+}: EmailConfirmation & { user: User }): EmailConfirmationWithStatusOutputModel => {
+  return new EmailConfirmationWithStatusOutputModel(userId, confirmationCode, expirationDate, user.isConfirmed)
 }
 
 export const PasswordRecoveryOutputMapper = ({

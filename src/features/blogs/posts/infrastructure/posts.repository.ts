@@ -4,7 +4,7 @@ import { Model } from 'mongoose'
 import { Post } from '../domain/post.entity'
 import { ObjectId } from 'mongodb'
 import { UpdatePostInputModel } from '../api/models/input/update-post.input.model'
-import { UpdateLikesCount } from '../../likes/application/likes.service'
+import { LikeCountChanges } from '../../likes/application/likes.service'
 
 @Injectable()
 export class PostsRepository {
@@ -20,7 +20,7 @@ export class PostsRepository {
     return !!result.matchedCount
   }
 
-  async updateLikesCount(postId: string, likesCountUpdate: UpdateLikesCount): Promise<boolean> {
+  async updateLikesCount(postId: string, likesCountUpdate: LikeCountChanges): Promise<boolean> {
     const likesUpdate: Record<string, any> = {}
 
     if (likesCountUpdate.likesCount) {

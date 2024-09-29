@@ -1,10 +1,9 @@
-import { Column, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
+import { Column, Entity, ManyToOne } from 'typeorm'
+import { Post } from '../../posts/domain/post.sql-entity'
+import { BaseEntity } from '../../../../base/entities/base.entity'
 
-@Entity()
-export class Comment {
-  @PrimaryGeneratedColumn('uuid')
-  id: string
-
+@Entity({ name: 'Comment' })
+export class Comment extends BaseEntity<Comment> {
   @Column({ type: 'uuid' })
   postId: string | null
 
@@ -14,15 +13,12 @@ export class Comment {
   @Column({ length: 300 })
   content: string
 
-  @Column()
+  @Column({ default: 0 })
   likesCount: number
 
-  @Column()
+  @Column({ default: 0 })
   dislikesCount: number
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-  createdAt: Date
-
-  @UpdateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
-  updatedAt: Date
+  @ManyToOne(() => Post, (post) => post.comments, { onDelete: 'CASCADE' })
+  post: Post
 }

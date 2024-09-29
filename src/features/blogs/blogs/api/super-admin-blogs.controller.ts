@@ -87,12 +87,11 @@ export class SuperAdminBlogsController {
   @Post(':blogId/posts')
   @HttpCode(HttpStatus.CREATED)
   async createPostToBlog(
-    @Req() req: Request,
     @Param('blogId', new ParseUUIDPipe()) blogId: string,
     @Body() body: CreatePostToBlogInputModel,
   ): Promise<PostOutputModel | void> {
     const result = await this.commandBus.execute<CreatePostToBlogCommand, InterlayerResult<Nullable<PostOutputModel>>>(
-      new CreatePostToBlogCommand({ ...body, blogId, userId: req.user?.id }),
+      new CreatePostToBlogCommand({ ...body, blogId }),
     )
     return handleInterlayerResult(result)
   }

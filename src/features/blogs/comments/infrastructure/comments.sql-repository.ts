@@ -1,69 +1,55 @@
 import { Injectable } from '@nestjs/common'
 import { CommentOutputMapper, CommentOutputModel } from '../api/models/output/comment.output.model'
-import { InjectDataSource } from '@nestjs/typeorm'
-import { DataSource } from 'typeorm'
+import { InjectRepository } from '@nestjs/typeorm'
+import { Repository } from 'typeorm'
+import { Comment } from '../domain/comment.sql-entity'
 
 @Injectable()
 export class CommentsSqlRepository {
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(Comment)
+    private readonly commentsRepository: Repository<Comment>,
+  ) {}
 
   async createCommentToPost(postId: string, userId: string, content: string): Promise<CommentOutputModel> {
-    const query = `
-      INSERT INTO "Comment" ("postId", "userId", "content")
-      VALUES ($1, $2, $3)
-      RETURNING *, (SELECT login FROM "User" WHERE "id" = $2)
-    `
-    const params = [postId, userId, content]
-
-    const [createdComment] = await this.dataSource.query(query, params)
-    return CommentOutputMapper(createdComment)
+    const { raw } = await this.commentsRepository
+      .createQueryBuilder()
+      .insert()
+      .values({ postId, userId, content })
+      .returning('*')
+      .execute()
+    return CommentOutputMapper(raw[0])
   }
 
   async updateComment(commentId: string, content: string): Promise<boolean> {
-    const query = `
-      UPDATE "Comment"
-      SET content = $1
-      WHERE id = $2
-    `
-    const params = [content, commentId]
-
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
+    const { affected } = await this.commentsRepository
+      .createQueryBuilder()
+      .update()
+      .set({ content })
+      .where('id = :id', { id: commentId })
+      .execute()
+    return !!affected
   }
 
-  async updateLikesCount(commentId: string, likesCount = 0, dislikesCount = 0): Promise<boolean> {
-    console.log(commentId, likesCount, dislikesCount)
-    const query = `
-      UPDATE "Comment"
-      SET "likesCount" = "likesCount" + $1, "dislikesCount" = "dislikesCount" + $2
-      WHERE id = $3
-    `
-    const params = [likesCount, dislikesCount, commentId]
-
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
-  }
-
-  async getCommentById(commentId: string): Promise<CommentOutputModel | null> {
-    const query = `
-      SELECT *
-      FROM "Comment"
-      WHERE id = $1
-    `
-    const params = [commentId]
-
-    const [comment] = await this.dataSource.query(query, params)
-    return comment
+  async updateLikesCount(commentId: string, likesCount: number, dislikesCount: number): Promise<boolean> {
+    const { affected } = await this.commentsRepository
+      .createQueryBuilder()
+      .update()
+      .set({
+        likesCount: () => `likesCount + ${likesCount}`,
+        dislikesCount: () => `dislikesCount + ${dislikesCount}`,
+      })
+      .where('id = :id', { id: commentId })
+      .execute()
+    return !!affected
   }
 
   async deleteComment(commentId: string): Promise<boolean> {
-    const query = `
-      DELETE FROM "Comment"
-      WHERE id = $1
-    `
-    const params = [commentId]
-
-    const [, affectedRows] = await this.dataSource.query(query, params)
-    return !!affectedRows
+    const { affected } = await this.commentsRepository
+      .createQueryBuilder()
+      .delete()
+      .where('id = :id', { id: commentId })
+      .execute()
+    return !!affected
   }
 }

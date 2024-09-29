@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt'
 import { Injectable } from '@nestjs/common'
 import { CreateUserInputModel } from '../api/models/input/create-user-input.model'
-import { User } from '../domain/user.entity'
+import { User } from '../domain/user.sql-entity'
 import { FullUserOutputModel, UserOutputModel } from '../api/models/output/user.output.model'
 import { InterlayerResult, InterlayerResultCode } from '../../../common/models/result-layer.model'
 import { UsersSqlRepository } from '../infrastructure/users.sql-repository'
@@ -50,6 +50,7 @@ export class UsersService {
     }
 
     const { passwordSalt, passwordHash } = await this.generatePasswordHash(password)
+
     const newUser = new User({
       login,
       email,

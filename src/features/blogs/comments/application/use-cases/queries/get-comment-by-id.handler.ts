@@ -1,8 +1,6 @@
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
 import { CommentOutputModel } from '../../../api/models/output/comment.output.model'
-import { LikesSqlQueryRepository } from '../../../../likes/infrastructure/likes.sql-query-repository'
-import { LikeStatus } from '../../../../likes/domain/like.entity'
 import { CommentsSqlQueryRepository } from '../../../infrastructure/comments.sql-query-repository'
 
 export class GetCommentByIdQueryPayload {
@@ -14,10 +12,7 @@ export class GetCommentByIdQueryPayload {
 
 @QueryHandler(GetCommentByIdQueryPayload)
 export class GetCommentByIdHandler implements IQueryHandler<GetCommentByIdQueryPayload> {
-  constructor(
-    private readonly commentsSqlQueryRepository: CommentsSqlQueryRepository,
-    private readonly likesQueryRepository: LikesSqlQueryRepository,
-  ) {}
+  constructor(private readonly commentsSqlQueryRepository: CommentsSqlQueryRepository) {}
 
   async execute({
     commentId,
@@ -29,9 +24,6 @@ export class GetCommentByIdHandler implements IQueryHandler<GetCommentByIdQueryP
       return InterlayerResult.Error(InterlayerResultCode.NotFound)
     }
 
-    // const myStatus = (await this.likesQueryRepository.getCommentLikeStatus(commentId, userId)) || LikeStatus.None
-
-    // return InterlayerResult.Ok(CommentOutputModel.addUserStatus(comment, myStatus))
     return InterlayerResult.Ok(comment)
   }
 }

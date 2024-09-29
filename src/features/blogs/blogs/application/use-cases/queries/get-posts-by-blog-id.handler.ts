@@ -2,7 +2,6 @@ import { IQueryHandler, QueryHandler } from '@nestjs/cqrs'
 import { InterlayerResult, InterlayerResultCode } from '../../../../../../common/models/result-layer.model'
 import { PaginatedResponse } from '../../../../../../common/models/common.model'
 import { PostOutputModel } from '../../../../posts/api/models/output/post.output.model'
-import { PostsService } from '../../../../posts/application/posts.service'
 import { PostsSqlQueryRepository } from '../../../../posts/infrastructure/posts.sql-query-repository'
 import { BlogsSqlQueryRepository } from '../../../infrastructure/blogs.sql-query-repository'
 
@@ -27,7 +26,6 @@ export class GetPostsByBlogIdQueryPayload {
 @QueryHandler(GetPostsByBlogIdQueryPayload)
 export class GetPostsByBlogIdHandler implements IQueryHandler<GetPostsByBlogIdQueryPayload> {
   constructor(
-    private readonly postsService: PostsService,
     private readonly blogsSqlQueryRepository: BlogsSqlQueryRepository,
     private readonly postsSqlQueryRepository: PostsSqlQueryRepository,
   ) {}
@@ -43,7 +41,6 @@ export class GetPostsByBlogIdHandler implements IQueryHandler<GetPostsByBlogIdQu
     }
 
     const paginatedPosts = await this.postsSqlQueryRepository.getPostsByBlogId(blogId, postQuery, userId)
-    // await Promise.all(paginatedPosts.items.map((post) => this.postsService.extendPostLikesInfo(post, userId)))
 
     return InterlayerResult.Ok(paginatedPosts)
   }

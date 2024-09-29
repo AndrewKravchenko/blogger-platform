@@ -22,8 +22,16 @@ export class SessionsService {
     return await this.sessionsSqlQueryRepository.getUserSessions(userId)
   }
 
+  async getUserSessionsCount(userId: string): Promise<number> {
+    return await this.sessionsSqlRepository.getUserSessionsCount(userId)
+  }
+
   async createSession(newSession: Session) {
     return await this.sessionsSqlRepository.createSession(newSession)
+  }
+
+  async refreshSession(userId: string, deviceId: string, refreshedSession: RefreshedSession): Promise<boolean> {
+    return await this.sessionsSqlRepository.refreshSession(userId, deviceId, refreshedSession)
   }
 
   async deleteSessionByDeviceId(userId: string, deviceId: string): Promise<InterlayerResult> {
@@ -43,5 +51,9 @@ export class SessionsService {
   async deleteSessions(userId: string, currentDeviceId: string): Promise<InterlayerResult> {
     const isDeleted = await this.sessionsSqlRepository.deleteSessions(userId, currentDeviceId)
     return isDeleted ? InterlayerResult.Ok() : InterlayerResult.Error(InterlayerResultCode.NotFound)
+  }
+
+  async deleteOldestSession(userId: string): Promise<void> {
+    await this.sessionsSqlRepository.deleteOldestSession(userId)
   }
 }

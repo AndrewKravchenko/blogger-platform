@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common'
-import { ObjectId } from 'mongodb'
 import { Request } from 'express'
 import bcrypt from 'bcrypt'
 import { JwtService } from '@nestjs/jwt'
@@ -11,15 +10,16 @@ import { UsersService } from '../../users/application/users.service'
 import { SignUpUserInputModel } from '../api/models/input/create-auth.input.model'
 import { add } from 'date-fns'
 import { NewPasswordRecoveryInputModel } from '../api/models/input/auth.input.model'
-import { RefreshedSession } from '../../sessions/application/sessions.service'
+import { RefreshedSession, SessionsService } from '../../sessions/application/sessions.service'
 import { ConfigService } from '@nestjs/config'
 import { Configuration } from '../../../settings/configuration'
 import { EmailsService } from '../../../infrastructure/emails/application/emails.service'
 import { UsersSqlRepository } from '../../users/infrastructure/users.sql-repository'
 import { UsersSqlQueryRepository } from '../../users/infrastructure/users.sql-query-repository'
 import { SessionsSqlRepository } from '../../sessions/infrastructure/sessions.sql-repository'
-import { SessionOutputModel } from '../../sessions/api/models/output/session.output.model'
 import { User } from '../../users/domain/user.sql-entity'
+import { EmailConfirmation } from 'src/features/users/domain/email-confirmation.sql-entity'
+import { PasswordRecovery } from '../../users/domain/password-recovery.sql-entity'
 
 export type TokenPair = {
   accessToken: string
@@ -43,6 +43,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly emailsService: EmailsService,
     private readonly configService: ConfigService<Configuration, true>,
+    private readonly sessionsService: SessionsService,
     private readonly usersSqlRepository: UsersSqlRepository,
     private readonly sessionsSqlRepository: SessionsSqlRepository,
     private readonly usersSqlQueryRepository: UsersSqlQueryRepository,
@@ -83,9 +84,15 @@ export class AuthService {
       isDeleted: false,
       isConfirmed: false,
     })
-
     const createdUser = await this.usersSqlRepository.create(newUser)
-    await this.usersSqlRepository.createEmailConfirmation(createdUser.id, confirmationCode, expirationDate)
+
+    const emailConfirmation = new EmailConfirmation({
+      userId: createdUser.id,
+      confirmationCode,
+      expirationDate,
+    })
+
+    await this.usersSqlRepository.createEmailConfirmation(emailConfirmation)
     await this.emailsService.sendRegistrationConfirmationEmail(email, confirmationCode)
 
     return InterlayerResult.Ok()
@@ -138,7 +145,13 @@ export class AuthService {
 
     hasPasswordRecoveryTable
       ? await this.usersSqlRepository.updateRecoveryCode(user.id, code, expirationDate)
-      : await this.usersSqlRepository.createPasswordRecovery(user.id, code, expirationDate)
+      : await this.usersSqlRepository.createPasswordRecovery(
+          new PasswordRecovery({
+            code,
+            userId: user.id,
+            expirationDate,
+          }),
+        )
 
     await this.emailsService.sendPasswordRecoveryEmail(email, code)
 
@@ -164,10 +177,10 @@ export class AuthService {
   }
 
   async login(userId: string, ip = '', deviceName = ''): Promise<InterlayerResult<TokenPair>> {
-    const sessionsCount = await this.sessionsSqlRepository.getUserSessionsCount(userId)
+    const sessionsCount = await this.sessionsService.getUserSessionsCount(userId)
 
     if (sessionsCount > 5) {
-      await this.sessionsSqlRepository.deleteOldestSession(userId)
+      await this.sessionsService.deleteOldestSession(userId)
     }
 
     const payload = { userId }
@@ -183,7 +196,7 @@ export class AuthService {
       expirationAt: new Date(exp * 1000),
     })
 
-    await this.sessionsSqlRepository.createSession(newSession)
+    await this.sessionsService.createSession(newSession)
     return InterlayerResult.Ok({ accessToken, refreshToken })
   }
 
@@ -197,13 +210,13 @@ export class AuthService {
       lastActiveDate: new Date(iat * 1000),
       expirationAt: new Date(exp * 1000),
     }
-    await this.sessionsSqlRepository.refreshSession(userId, deviceId, refreshedSession)
+    await this.sessionsService.refreshSession(userId, deviceId, refreshedSession)
 
     return InterlayerResult.Ok({ accessToken, refreshToken })
   }
 
-  async logout(deviceId: string): Promise<void> {
-    await this.sessionsSqlRepository.deleteSessionByDeviceId(deviceId)
+  async logout(userId: string, deviceId: string): Promise<void> {
+    await this.sessionsService.deleteSessionByDeviceId(userId, deviceId)
   }
 
   async validateUser(loginOrEmail: string, password: string) {
@@ -249,10 +262,6 @@ export class AuthService {
     }
 
     return null
-  }
-
-  async getSession(userId: string, deviceId: string): Promise<SessionOutputModel | null> {
-    return await this.sessionsSqlRepository.getSession(userId, deviceId)
   }
 
   private signTokens(payload: any, deviceId?: string): TokenPair {
